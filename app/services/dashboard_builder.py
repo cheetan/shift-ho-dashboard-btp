@@ -168,7 +168,7 @@ def _fresh_bar_item(source_key, label, source_meta):
 
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
-               source_meta=None):
+               source_meta=None, current_user=""):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
@@ -704,6 +704,10 @@ document.addEventListener('DOMContentLoaded', function() {{
   }});
   var infoVal = sharedNotes['info:notes'] || localStorage.getItem('info:notes') || '';
   if (infoVal) document.getElementById('info-area').innerText = infoVal;
+  var serverUser = {json.dumps(current_user)};
+  if (serverUser && serverUser !== 'unknown') {{
+    localStorage.setItem('user_email', serverUser);
+  }}
   var em = localStorage.getItem('user_email') || '—';
   document.getElementById('user-email-display').textContent = em === '—' ? '—' : (em.split('@')[0] || em);
 }});

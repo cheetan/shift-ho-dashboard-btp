@@ -1,6 +1,11 @@
 {
   "xsappname": "shift-ho-dashboard",
   "tenant-mode": "dedicated",
+  "oauth2-configuration": {
+    "redirect-uris": [
+      "https://shift-ho-approuter.cfapps.us10-001.hana.ondemand.com/**"
+    ]
+  },
   "scopes": [],
   "role-templates": []
 }

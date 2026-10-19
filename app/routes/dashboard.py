@@ -7,6 +7,7 @@ from app.services.xlsx_parser import (
     filter_spc_longrunners, filter_spc_by_last_changed, get_flagged_ids,
 )
 from app.services.dashboard_builder import build_html
+from app.utils.auth import get_user_from_request
 
 bp = Blueprint("dashboard", __name__)
 
@@ -70,6 +71,8 @@ def index():
     sr_updated = filter_spc_by_last_changed(sr_all_raw, s_lc_idx, prev_start, prev_end,
                                              s_link_idx, set(), exclude_ids=scheduled_ids)
 
+    current_user = get_user_from_request(request)
+
     html = build_html(
         ah, ar_filtered, ch, cr_filtered, ih, ir_filtered,
         sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
@@ -78,5 +81,6 @@ def index():
         next_shift_label=next_label,
         prev_shift_label=prev_label,
         source_meta=source_meta,
+        current_user=current_user,
     )
     return Response(html, mimetype="text/html")
