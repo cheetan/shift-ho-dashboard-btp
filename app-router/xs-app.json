@@ -8,6 +8,13 @@
       "authenticationType": "none"
     },
     {
+      "source": "^/api/",
+      "target": "/api/",
+      "destination": "shift-ho-backend",
+      "authenticationType": "xsuaa",
+      "csrfProtection": false
+    },
+    {
       "source": "^/",
       "target": "/",
       "destination": "shift-ho-backend",

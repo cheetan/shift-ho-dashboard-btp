@@ -430,8 +430,8 @@ tr.row-hidden{{opacity:.5;background:repeating-linear-gradient(135deg,transparen
 tr.row-covered{{opacity:.4}}
 tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 .hide-covered tr.row-covered{{display:none}}
-.save-indicator{{position:fixed;bottom:16px;right:16px;background:var(--surface);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:8px 14px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none}}
-.save-indicator.show{{opacity:1}}
+.save-indicator{{position:fixed;bottom:24px;right:24px;background:#1a2e1a;border:2px solid #52c41a;color:#52c41a;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 4px 20px rgba(82,196,26,.35);letter-spacing:.02em;z-index:9999}}
+.save-indicator.show{{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
@@ -547,8 +547,9 @@ function _serverSave(showIndicator) {{
     headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
     body: JSON.stringify(notes)
   }}).then(function(r) {{
-    if (r.ok && showIndicator) showSaved();
-  }}).catch(function(e) {{ console.warn('Auto-save error:', e); }});
+    if (r.ok) {{ if (showIndicator) showSaved(); }}
+    else {{ console.warn('Server save failed: HTTP ' + r.status); showSaveError(r.status); }}
+  }}).catch(function(e) {{ console.warn('Auto-save error:', e); showSaveError(0); }});
 }}
 function hideRow(btn) {{
   var tr = btn.closest('tr');
@@ -623,6 +624,17 @@ function showSaved() {{
   var el = document.getElementById('save-indicator');
   el.classList.add('show');
   setTimeout(function() {{ el.classList.remove('show'); }}, 2500);
+}}
+function showSaveError(status) {{
+  var el = document.getElementById('save-indicator');
+  el.textContent = '&#x26A0; Save failed' + (status ? ' (' + status + ')' : '');
+  el.style.borderColor = 'var(--p1)'; el.style.color = 'var(--p1)';
+  el.classList.add('show');
+  setTimeout(function() {{
+    el.classList.remove('show');
+    el.textContent = '&#x2713; Notes saved';
+    el.style.borderColor = ''; el.style.color = '';
+  }}, 4000);
 }}
 function uploadFile(input, source) {{
   if (!input.files[0]) return;
