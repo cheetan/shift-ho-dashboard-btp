@@ -1,0 +1,17 @@
+{
+  "authenticationMethod": "route",
+  "routes": [
+    {
+      "source": "^/health$",
+      "target": "/health",
+      "destination": "shift-ho-backend",
+      "authenticationType": "none"
+    },
+    {
+      "source": "^/",
+      "target": "/",
+      "destination": "shift-ho-backend",
+      "authenticationType": "xsuaa"
+    }
+  ]
+}

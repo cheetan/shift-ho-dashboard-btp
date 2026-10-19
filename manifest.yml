@@ -1,13 +1,23 @@
 applications:
+  - name: shift-ho-approuter
+    path: app-router
+    memory: 256M
+    buildpacks:
+      - nodejs_buildpack
+    env:
+      destinations: >
+        [{"name":"shift-ho-backend","url":"https://shift-ho-dashboard.cfapps.us10-001.hana.ondemand.com","forwardAuthToken":true}]
+    services:
+      - shift-ho-xsuaa
+
   - name: shift-ho-dashboard
     memory: 512M
     disk_quota: 512M
     buildpacks:
       - python_buildpack
     command: gunicorn wsgi:application --workers 2 --timeout 120
-    # Bind to your HANA Cloud service instance before cf push
-    # Create it with: cf create-service hana-cloud hana shift-ho-hana
     services:
       - shift-ho-hana
+      - shift-ho-xsuaa
     env:
       PYTHON_VERSION: 3.12.x

@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify
 
 from app.store import get_store
 from app.services.xlsx_parser import read_snow_xlsx, read_spc_xlsx
+from app.utils.auth import get_user_from_request
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -19,7 +20,7 @@ def upload(source):
     if "file" not in request.files:
         return jsonify({"ok": False, "error": "No file in request"}), 400
 
-    uploaded_by = request.headers.get("X-User-Email", "unknown")
+    uploaded_by = get_user_from_request(request)
     data = request.files["file"].read()
 
     try:
@@ -44,6 +45,6 @@ def export_notes():
     if notes is None:
         return jsonify({"ok": False, "error": "Expected JSON body"}), 400
 
-    updated_by = request.headers.get("X-User-Email", "unknown")
+    updated_by = get_user_from_request(request)
     get_store().save_ho_status(notes, updated_by)
     return jsonify({"ok": True})
