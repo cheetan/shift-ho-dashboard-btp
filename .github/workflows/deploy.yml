@@ -1,0 +1,43 @@
+name: Deploy to SAP BTP Cloud Foundry
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CF CLI
+        run: |
+          curl -fsSL "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" | tar -zx
+          sudo mv cf8 /usr/local/bin/cf
+          cf version
+
+      - name: CF Login
+        run: |
+          cf login \
+            -a "${{ secrets.CF_API }}" \
+            -u "${{ secrets.CF_USERNAME }}" \
+            -p "${{ secrets.CF_PASSWORD }}" \
+            -o "${{ secrets.CF_ORG }}" \
+            -s "${{ secrets.CF_SPACE }}"
+
+      - name: Set HANA credentials
+        run: |
+          cf set-env shift-ho-dashboard HANA_HOST "${{ secrets.HANA_HOST }}"
+          cf set-env shift-ho-dashboard HANA_PORT "443"
+          cf set-env shift-ho-dashboard HANA_USER "${{ secrets.HANA_USER }}"
+          cf set-env shift-ho-dashboard HANA_PASSWORD "${{ secrets.HANA_PASSWORD }}"
+
+      - name: Deploy
+        run: cf push
+
+      - name: Verify health
+        run: |
+          sleep 15
+          curl -f https://shift-ho-dashboard.cfapps.us10-001.hana.ondemand.com/health
