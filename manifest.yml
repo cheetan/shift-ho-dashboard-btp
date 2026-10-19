@@ -1,0 +1,13 @@
+applications:
+  - name: shift-ho-dashboard
+    memory: 512M
+    disk_quota: 512M
+    buildpacks:
+      - python_buildpack
+    command: gunicorn wsgi:application --workers 2 --timeout 120
+    # Bind to your HANA Cloud service instance before cf push
+    # Create it with: cf create-service hana-cloud hana shift-ho-hana
+    services:
+      - shift-ho-hana
+    env:
+      PYTHON_VERSION: 3.12.x

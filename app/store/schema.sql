@@ -1,0 +1,23 @@
+-- Run once against your HANA Cloud tenant to create the required tables.
+-- Connect as a user with CREATE TABLE privileges.
+
+CREATE TABLE SOURCE_CACHE (
+    SOURCE       NVARCHAR(20)   NOT NULL,
+    HEADERS_JSON NCLOB          NOT NULL,
+    ROWS_JSON    NCLOB          NOT NULL,
+    META_JSON    NCLOB          NOT NULL DEFAULT '{}',
+    UPLOADED_BY  NVARCHAR(200)  NOT NULL,
+    UPLOADED_AT  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ROW_COUNT    INTEGER        NOT NULL DEFAULT 0,
+    PRIMARY KEY (SOURCE)
+);
+
+-- Valid SOURCE values: 'snow_alert', 'snow_case', 'snow_inc', 'spc'
+
+CREATE TABLE HO_STATUS (
+    NOTE_KEY    NVARCHAR(500)  NOT NULL,
+    NOTE_VALUE  NVARCHAR(5000) NOT NULL,
+    UPDATED_BY  NVARCHAR(200)  NOT NULL,
+    UPDATED_AT  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (NOTE_KEY)
+);

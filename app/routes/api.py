@@ -1,0 +1,49 @@
+import io
+
+from flask import Blueprint, request, jsonify
+
+from app.store import get_store
+from app.services.xlsx_parser import read_snow_xlsx, read_spc_xlsx
+
+bp = Blueprint("api", __name__, url_prefix="/api")
+
+SNOW_SOURCES = {"snow_alert", "snow_case", "snow_inc"}
+ALL_SOURCES  = SNOW_SOURCES | {"spc"}
+
+
+@bp.route("/upload/<source>", methods=["POST"])
+def upload(source):
+    if source not in ALL_SOURCES:
+        return jsonify({"ok": False, "error": f"Unknown source '{source}'"}), 400
+
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file in request"}), 400
+
+    uploaded_by = request.headers.get("X-User-Email", "unknown")
+    data = request.files["file"].read()
+
+    try:
+        if source in SNOW_SOURCES:
+            headers, rows = read_snow_xlsx(io.BytesIO(data))
+            meta = {}
+        else:
+            headers, rows, meta = read_spc_xlsx(io.BytesIO(data))
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 422
+
+    if not headers:
+        return jsonify({"ok": False, "error": "Could not parse XLSX — empty or unrecognised format"}), 422
+
+    get_store().upsert_source(source, headers, rows, uploaded_by, meta=meta)
+    return jsonify({"ok": True, "source": source, "rows": len(rows)})
+
+
+@bp.route("/export-notes", methods=["POST"])
+def export_notes():
+    notes = request.get_json(silent=True)
+    if notes is None:
+        return jsonify({"ok": False, "error": "Expected JSON body"}), 400
+
+    updated_by = request.headers.get("X-User-Email", "unknown")
+    get_store().save_ho_status(notes, updated_by)
+    return jsonify({"ok": True})
