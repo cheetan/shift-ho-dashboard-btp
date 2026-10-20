@@ -82,9 +82,9 @@ def send_ans_event(message: str, ans_url: str, oauth_url: str,
 
     first_line = message.split("\n")[0]
     if " — " in first_line:
-        subject = "Shift Dashboard — " + first_line.split(" — ", 1)[1]
+        subject = "Shift Handover Dashboard EU DB L2 — " + first_line.split(" — ", 1)[1]
     else:
-        subject = "Shift Dashboard Notification"
+        subject = "Shift Handover Dashboard EU DB L2"
 
     event = {
         "eventType": "ShiftHandoverNotification",

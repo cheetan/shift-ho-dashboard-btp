@@ -321,7 +321,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shift Handover Dashboard</title>
+<title>Shift Handover Dashboard EU DB L2</title>
 <style>
 :root {{
   --bg:#0f1117; --surface:#1a1d27; --border:#2a2d3a;
@@ -436,7 +436,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </head>
 <body>
 <header>
-  <h1>&#x1F4CB; Shift Handover Dashboard</h1>
+  <h1>&#x1F4CB; Shift Handover Dashboard EU DB L2</h1>
   <div class="shift-label">{shift_label}</div>
   <div class="meta">Generated: {now}<br>SPC data: {spc_updated_str}</div>
   <span class="user-pill" onclick="changeEmail()" title="Click to change your email">&#x1F464; <span id="user-email-display">—</span></span>
