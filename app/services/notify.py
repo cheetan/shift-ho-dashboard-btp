@@ -58,10 +58,12 @@ def build_shift_message(store) -> str:
 
 
 def _get_ans_token(oauth_url: str, client_id: str, client_secret: str) -> str:
+    # VCAP_SERVICES provides the full token URL (may include ?grant_type=... query string)
+    token_url = oauth_url.split("?")[0]
     credentials = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
     data = urllib.parse.urlencode({"grant_type": "client_credentials"}).encode()
     req = urllib.request.Request(
-        f"{oauth_url}/oauth/token",
+        token_url,
         data=data,
         headers={
             "Authorization": f"Basic {credentials}",
