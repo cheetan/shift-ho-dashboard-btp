@@ -59,8 +59,8 @@ def notify():
 
     from app.services.notify import build_shift_message, send_ans_event
     try:
-        message = build_shift_message(get_store())
-        result  = send_ans_event(message, ans["url"], ans["oauth_url"],
+        message, tags = build_shift_message(get_store())
+        result  = send_ans_event(message, tags, ans["url"], ans["oauth_url"],
                                   ans["client_id"], ans["client_secret"])
         return jsonify({"ok": True, "message": message, **result})
     except Exception as e:

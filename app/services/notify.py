@@ -13,7 +13,8 @@ from app.services.xlsx_parser import (
 )
 
 
-def build_shift_message(store) -> str:
+def build_shift_message(store) -> tuple:
+    """Returns (message_str, tags_dict) for use in ANS event."""
     ah, ar, _ = store.get_source("snow_alert")
     ch, cr, _ = store.get_source("snow_case")
     ih, ir, _ = store.get_source("snow_inc")
@@ -47,19 +48,29 @@ def build_shift_message(store) -> str:
                                          s_link, set(), exclude_ids=sched)
 
     total_spc = len(sr_cur) + len(sr_nxt) + len(sr_lr) + len(sr_upd)
-    return (
-        f"📊 Shift Dashboard ready — {shift_label}\n\n"
-        f"🔔 Snow Alerts:    {len(ar_f)}\n"
-        f"📋 Snow Cases:     {len(cr_f)}\n"
-        f"🚨 Internal INCs:  {len(ir_f)}\n"
-        f"🎫 SPC Tickets:    {total_spc} "
-        f"(Current: {len(sr_cur)}, Next: {len(sr_nxt)}, "
-        f"Longrunners: {len(sr_lr)}, Updated: {len(sr_upd)})"
+
+    message = (
+        f"Shift Dashboard ready — {shift_label} | "
+        f"Snow Alerts: {len(ar_f)} | Snow Cases: {len(cr_f)} | "
+        f"Internal INCs: {len(ir_f)} | SPC Tickets: {total_spc}"
     )
+
+    tags = {
+        "shift_label":     shift_label,
+        "snow_alerts":     str(len(ar_f)),
+        "snow_cases":      str(len(cr_f)),
+        "snow_incs":       str(len(ir_f)),
+        "spc_total":       str(total_spc),
+        "spc_current":     str(len(sr_cur)),
+        "spc_next":        str(len(sr_nxt)),
+        "spc_longrunners": str(len(sr_lr)),
+        "spc_updated":     str(len(sr_upd)),
+    }
+
+    return message, tags
 
 
 def _get_ans_token(oauth_url: str, client_id: str, client_secret: str) -> str:
-    # VCAP_SERVICES provides the full token URL (may include ?grant_type=... query string)
     token_url = oauth_url.split("?")[0]
     credentials = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
     data = urllib.parse.urlencode({"grant_type": "client_credentials"}).encode()
@@ -76,15 +87,11 @@ def _get_ans_token(oauth_url: str, client_id: str, client_secret: str) -> str:
         return json.loads(resp.read())["access_token"]
 
 
-def send_ans_event(message: str, ans_url: str, oauth_url: str,
+def send_ans_event(message: str, tags: dict, ans_url: str, oauth_url: str,
                    client_id: str, client_secret: str) -> dict:
     token = _get_ans_token(oauth_url, client_id, client_secret)
 
-    first_line = message.split("\n")[0]
-    if " — " in first_line:
-        subject = "Shift Handover Dashboard EU DB L2 — " + first_line.split(" — ", 1)[1]
-    else:
-        subject = "Shift Handover Dashboard EU DB L2"
+    subject = "Shift Handover Dashboard EU DB L2 — " + tags.get("shift_label", "")
 
     event = {
         "eventType": "ShiftHandoverNotification",
@@ -93,6 +100,7 @@ def send_ans_event(message: str, ans_url: str, oauth_url: str,
         "category": "NOTIFICATION",
         "subject": subject,
         "body": message,
+        "tags": tags,
         "resource": {
             "resourceName": "shift-ho-dashboard",
             "resourceType": "application",
