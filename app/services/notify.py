@@ -48,10 +48,11 @@ def build_shift_message(store) -> str:
 
     total_spc = len(sr_cur) + len(sr_nxt) + len(sr_lr) + len(sr_upd)
     return (
-        f"📊 Shift Dashboard ready — {shift_label}\n"
-        f"🔔 Snow Alerts: {len(ar_f)}  |  📋 Snow Cases: {len(cr_f)}  |  "
-        f"🚨 Internal INCs: {len(ir_f)}  |  "
-        f"🎫 SPC Tickets: {total_spc} "
+        f"📊 Shift Dashboard ready — {shift_label}\n\n"
+        f"🔔 Snow Alerts:    {len(ar_f)}\n"
+        f"📋 Snow Cases:     {len(cr_f)}\n"
+        f"🚨 Internal INCs:  {len(ir_f)}\n"
+        f"🎫 SPC Tickets:    {total_spc} "
         f"(Current: {len(sr_cur)}, Next: {len(sr_nxt)}, "
         f"Longrunners: {len(sr_lr)}, Updated: {len(sr_upd)})"
     )
