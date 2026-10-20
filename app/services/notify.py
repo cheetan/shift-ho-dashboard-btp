@@ -92,7 +92,7 @@ def send_ans_event(message: str, ans_url: str, oauth_url: str,
         "severity": "INFO",
         "category": "NOTIFICATION",
         "subject": subject,
-        "body": message.replace("\n", "<br>"),
+        "body": message,
         "resource": {
             "resourceName": "shift-ho-dashboard",
             "resourceType": "application",
