@@ -53,4 +53,23 @@ def get_xsuaa_config() -> dict:
     return {}
 
 
+def get_ans_config() -> dict:
+    """Extract Alert Notification Service credentials from VCAP_SERVICES."""
+    vcap = os.environ.get("VCAP_SERVICES")
+    if vcap:
+        try:
+            for svc in json.loads(vcap).get("alert-notification", []):
+                c = svc.get("credentials", {})
+                if c.get("url") and c.get("client_id"):
+                    return {
+                        "url":           c.get("url", ""),
+                        "oauth_url":     c.get("oauth_url", ""),
+                        "client_id":     c.get("client_id", ""),
+                        "client_secret": c.get("client_secret", ""),
+                    }
+        except Exception:
+            pass
+    return {}
+
+
 USE_MEMORY_STORE: bool = os.environ.get("USE_MEMORY_STORE", "false").lower() == "true"

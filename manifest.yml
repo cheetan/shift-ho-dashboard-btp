@@ -19,5 +19,6 @@ applications:
     services:
       - shift-ho-hana
       - shift-ho-xsuaa
+      - shift-ho-alerts
     env:
       PYTHON_VERSION: 3.12.x

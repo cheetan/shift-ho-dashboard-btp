@@ -48,3 +48,20 @@ def export_notes():
     updated_by = get_user_from_request(request)
     get_store().save_ho_status(notes, updated_by)
     return jsonify({"ok": True})
+
+
+@bp.route("/notify", methods=["POST"])
+def notify():
+    from app.config import get_ans_config
+    ans = get_ans_config()
+    if not ans.get("url") or not ans.get("client_id"):
+        return jsonify({"ok": False, "error": "Alert Notification Service not bound — bind shift-ho-alerts in CF"}), 500
+
+    from app.services.notify import build_shift_message, send_ans_event
+    try:
+        message = build_shift_message(get_store())
+        result  = send_ans_event(message, ans["url"], ans["oauth_url"],
+                                  ans["client_id"], ans["client_secret"])
+        return jsonify({"ok": True, "message": message, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 502

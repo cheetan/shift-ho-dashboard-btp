@@ -441,6 +441,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <div class="meta">Generated: {now}<br>SPC data: {spc_updated_str}</div>
   <span class="user-pill" onclick="changeEmail()" title="Click to change your email">&#x1F464; <span id="user-email-display">—</span></span>
   <button class="export-btn" onclick="exportNotes()">&#x1F4BE; Export &amp; Save Notes</button>
+  <button class="export-btn" id="notify-btn" onclick="notifyTeam(this)">&#x1F514; Notify Team</button>
 </header>
 <main>
 
@@ -619,6 +620,21 @@ function exportNotes() {{
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'ho_status.json'; a.click(); URL.revokeObjectURL(a.href);
   _serverSave(true);
+}}
+function notifyTeam(btn) {{
+  btn.disabled = true; btn.textContent = '⏳ Sending…';
+  fetch('/api/notify', {{
+    method: 'POST',
+    headers: {{'X-User-Email': localStorage.getItem('user_email') || 'unknown'}}
+  }}).then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      btn.disabled = false;
+      btn.innerHTML = d.ok ? '&#x2705; Notified!' : '&#x274C; Failed';
+      setTimeout(function() {{ btn.innerHTML = '&#x1F514; Notify Team'; }}, 3000);
+    }}).catch(function() {{
+      btn.disabled = false; btn.innerHTML = '&#x274C; Error';
+      setTimeout(function() {{ btn.innerHTML = '&#x1F514; Notify Team'; }}, 3000);
+    }});
 }}
 function showSaved() {{
   var el = document.getElementById('save-indicator');
