@@ -182,6 +182,10 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
+    source_versions_json = json.dumps({
+        k: ((v or {}).get("uploaded_at", ""))
+        for k, v in (source_meta or {}).items()
+    }, ensure_ascii=False)
 
     a_pri = safe_col(ah, "Priority"); c_pri = safe_col(ch, "Priority")
     s_pri = safe_col(sh, "Priority"); i_pri = safe_col(ih, "Priority")
@@ -447,6 +451,12 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </style>
 </head>
 <body>
+<div id="refresh-banner"
+     style="display:none;position:fixed;top:0;left:0;right:0;background:#0070f2;
+            color:#fff;text-align:center;padding:8px 16px;z-index:9999;cursor:pointer;font-size:14px;"
+     onclick="location.reload()">
+  &#x21bb;&nbsp; Dashboard updated by a colleague &mdash; click to refresh
+</div>
 <header>
   <h1>&#x1F4CB; Shift Handover Dashboard EU DB L2</h1>
   <div class="shift-label">{shift_label}</div>
@@ -533,6 +543,25 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 <div class="save-indicator" id="save-indicator">&#x2713; Notes saved</div>
 <script>
 var sharedNotes = {ho_json};
+var serverVersions = {source_versions_json};
+
+(function() {{
+  var known = JSON.parse(JSON.stringify(serverVersions));
+  setInterval(function() {{
+    fetch('/api/status')
+      .then(function(r) {{ return r.json(); }})
+      .then(function(latest) {{
+        var changed = Object.keys(latest).some(function(k) {{
+          return latest[k] && latest[k] !== known[k];
+        }});
+        if (changed) {{
+          var b = document.getElementById('refresh-banner');
+          if (b) b.style.display = 'block';
+        }}
+      }})
+      .catch(function() {{}});
+  }}, 30000);
+}})();
 
 var _autoSaveTimer = null;
 function _scheduleAutoSave() {{

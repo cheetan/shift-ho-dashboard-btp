@@ -73,3 +73,12 @@ def notify():
         return jsonify({"ok": True, "message": message, **result})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 502
+
+
+@bp.route("/status", methods=["GET"])
+def status():
+    store = get_store()
+    return jsonify({
+        src: (store.get_upload_meta(src) or {}).get("uploaded_at", "")
+        for src in ("snow_alert", "snow_case", "snow_inc", "spc")
+    })
