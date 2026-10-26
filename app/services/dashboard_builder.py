@@ -560,7 +560,7 @@ var serverVersions = {source_versions_json};
         }}
       }})
       .catch(function() {{}});
-  }}, 30000);
+  }}, 5000);
 }})();
 
 var _autoSaveTimer = null;
