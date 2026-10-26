@@ -23,3 +23,7 @@ class DataStore(ABC):
     @abstractmethod
     def save_ho_status(self, notes: dict, updated_by: str) -> None:
         """Replace all HO status notes with the provided dict."""
+
+    @abstractmethod
+    def get_ho_updated_at(self) -> str:
+        """Return the UTC timestamp of the last save_ho_status call, or '' if never saved."""

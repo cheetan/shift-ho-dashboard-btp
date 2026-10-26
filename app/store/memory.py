@@ -9,6 +9,7 @@ class MemoryStore(DataStore):
     def __init__(self):
         self._sources: dict[str, dict] = {}
         self._ho_status: dict[str, str] = {}
+        self._ho_updated_at: str = ""
 
     def upsert_source(self, source, headers, rows, uploaded_by, meta=None):
         self._sources[source] = {
@@ -39,3 +40,7 @@ class MemoryStore(DataStore):
 
     def save_ho_status(self, notes, updated_by):
         self._ho_status = {k: v for k, v in notes.items() if not k.startswith("hide:")}
+        self._ho_updated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    def get_ho_updated_at(self) -> str:
+        return self._ho_updated_at

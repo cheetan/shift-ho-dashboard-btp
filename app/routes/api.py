@@ -78,7 +78,9 @@ def notify():
 @bp.route("/status", methods=["GET"])
 def status():
     store = get_store()
-    return jsonify({
+    result = {
         src: (store.get_upload_meta(src) or {}).get("uploaded_at", "")
         for src in ("snow_alert", "snow_case", "snow_inc", "spc")
-    })
+    }
+    result["ho_status"] = store.get_ho_updated_at()
+    return jsonify(result)

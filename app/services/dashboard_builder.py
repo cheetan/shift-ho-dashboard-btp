@@ -178,14 +178,14 @@ def _fresh_bar_item(source_key, label, source_meta):
 
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
-               source_meta=None, current_user=""):
+               source_meta=None, current_user="", ho_updated_at=""):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
     source_versions_json = json.dumps({
         k: ((v or {}).get("uploaded_at", ""))
         for k, v in (source_meta or {}).items()
-    }, ensure_ascii=False)
+    } | {"ho_status": ho_updated_at}, ensure_ascii=False)
 
     a_pri = safe_col(ah, "Priority"); c_pri = safe_col(ch, "Priority")
     s_pri = safe_col(sh, "Priority"); i_pri = safe_col(ih, "Priority")

@@ -79,6 +79,7 @@ def index():
     sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"])
 
     current_user = get_user_from_request(request)
+    ho_updated_at = get_store().get_ho_updated_at()
 
     html = build_html(
         ah, ar_filtered, ch, cr_filtered, ih, ir_filtered,
@@ -89,5 +90,6 @@ def index():
         prev_shift_label=prev_label,
         source_meta=source_meta,
         current_user=current_user,
+        ho_updated_at=ho_updated_at,
     )
     return Response(html, mimetype="text/html")

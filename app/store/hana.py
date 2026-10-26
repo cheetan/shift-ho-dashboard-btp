@@ -97,3 +97,10 @@ class HanaStore(DataStore):
             )
         self._get_conn().commit()
         cur.close()
+
+    def get_ho_updated_at(self) -> str:
+        cur = self._cursor()
+        cur.execute("SELECT MAX(UPDATED_AT) FROM HO_STATUS")
+        row = cur.fetchone()
+        cur.close()
+        return str(row[0]) if row and row[0] else ""
