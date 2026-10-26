@@ -105,6 +105,7 @@ def send_ans_event(message: str, tags: dict, ans_url: str, oauth_url: str,
             "resourceName": "shift-ho-dashboard",
             "resourceType": "application",
             "resourceInstance": "shift-handover",
+            "resourceUrl": "https://shift-ho-approuter.cfapps.eu12-001.hana.ondemand.com",
         },
     }
 
