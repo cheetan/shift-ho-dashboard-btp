@@ -76,7 +76,8 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
     lr_th   = '<th class="lr-th">Longrunner</th>'  if longrunner        else ""
     extra_th = f'<th>{editable_col}</th>'           if editable_col      else ""
     cov_th  = '<th class="cov-th">Coverage</th>'   if coverage_map is not None else ""
-    th = hide_th + "".join(f"<th>{h}</th>" for h in actual) + lr_th + extra_th + cov_th
+    move_th = '<th class="move-th">Move to</th>'   if coverage_map is not None else ""
+    th = hide_th + "".join(f"<th>{h}</th>" for h in actual) + lr_th + extra_th + cov_th + move_th
 
     tbody = []
     for row in rows:
@@ -126,6 +127,15 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             else:
                 cov_cell = '<span class="cov-none">—</span>'
             tds.append(f"<td>{cov_cell}</td>")
+            tds.append(
+                f'<td><select class="move-select" data-ticket="{ticket_key}" onchange="moveTicket(this)">'
+                f'<option value="">— auto —</option>'
+                f'<option value="spc-current">Current Shift</option>'
+                f'<option value="spc-next">Next Shift</option>'
+                f'<option value="spc-lr">Longrunners</option>'
+                f'<option value="spc-updated">Updated</option>'
+                f'</select></td>'
+            )
 
         row_covered_cls = " row-covered" if (coverage_map is not None and ticket_key and ticket_key in coverage_map) else ""
         tbody.append(f'<tr class="row-{pcls}{row_covered_cls}" data-hide-key="{f"hide:{section_id}:{ticket_key}" if hideable else ""}">{hide_td}{"".join(tds)}</tr>')
@@ -427,6 +437,8 @@ tr.row-hidden{{opacity:.5;background:repeating-linear-gradient(135deg,transparen
 .cov-lr{{background:rgba(255,77,79,.20);color:#ff4d4f}}
 .cov-updated{{background:rgba(79,142,247,.20);color:#4f8ef7}}
 .cov-none{{color:var(--muted)}}
+.move-th{{width:120px}}
+.move-select{{font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;width:100%}}
 tr.row-covered{{opacity:.4}}
 tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 .hide-covered tr.row-covered{{display:none}}
@@ -536,6 +548,9 @@ function saveLR(el) {{
   else            localStorage.removeItem(el.dataset.key);
   _scheduleAutoSave();
 }}
+function moveTicket(sel) {{
+  _scheduleAutoSave();
+}}
 function saveInfo() {{
   localStorage.setItem('info:notes', document.getElementById('info-area').innerText);
   _scheduleAutoSave();
@@ -608,6 +623,13 @@ function _collectNotes() {{
   document.querySelectorAll('.lr-flag').forEach(function(el) {{
     var key = el.dataset.key;
     if (el.checked) notes[key] = '1'; else delete notes[key];
+  }});
+  document.querySelectorAll('.move-select').forEach(function(el) {{
+    var tid = el.dataset.ticket;
+    ['spc-current','spc-next','spc-lr','spc-updated'].forEach(function(s) {{
+      delete notes['move:' + s + ':' + tid];
+    }});
+    if (el.value) notes['move:' + el.value + ':' + tid] = '1';
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
   var infoVal = document.getElementById('info-area').innerText.trim();
@@ -714,6 +736,14 @@ document.addEventListener('DOMContentLoaded', function() {{
     var key = el.dataset.key;
     var val = sharedNotes[key] || localStorage.getItem(key);
     el.checked = val === '1';
+  }});
+  document.querySelectorAll('.move-select').forEach(function(sel) {{
+    var tid = sel.dataset.ticket;
+    var found = '';
+    ['spc-current','spc-next','spc-lr','spc-updated'].forEach(function(s) {{
+      if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
+    }});
+    sel.value = found;
   }});
   document.querySelectorAll('.hide-btn').forEach(function(btn) {{
     var val = localStorage.getItem(btn.dataset.key);

@@ -5,6 +5,7 @@ from app.services.shift import detect_shift, get_shift_window, get_next_shift_wi
 from app.services.xlsx_parser import (
     safe_col, filter_snow_by_shift, filter_spc_by_shift,
     filter_spc_longrunners, filter_spc_by_last_changed, get_flagged_ids,
+    get_section_overrides, apply_section_override,
 )
 from app.services.dashboard_builder import build_html
 from app.utils.auth import get_user_from_request
@@ -70,6 +71,12 @@ def index():
     scheduled_ids |= lr_flagged
     sr_updated = filter_spc_by_last_changed(sr_all_raw, s_lc_idx, prev_start, prev_end,
                                              s_link_idx, set(), exclude_ids=scheduled_ids)
+
+    overrides = get_section_overrides(ho_status)
+    sr_current = apply_section_override(sr_current, sr_all_raw, s_link_idx, overrides["spc-current"])
+    sr_next    = apply_section_override(sr_next,    sr_all_raw, s_link_idx, overrides["spc-next"])
+    sr_lr      = apply_section_override(sr_lr,      sr_all_raw, s_link_idx, overrides["spc-lr"])
+    sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"])
 
     current_user = get_user_from_request(request)
 

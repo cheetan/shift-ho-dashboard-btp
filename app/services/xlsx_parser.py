@@ -175,6 +175,26 @@ def get_flagged_ids(ho_status, section_id):
             if k.startswith(prefix) and str(v) == "1"}
 
 
+def get_section_overrides(ho_status: dict) -> dict:
+    overrides = {"spc-current": set(), "spc-next": set(), "spc-lr": set(), "spc-updated": set()}
+    for key, val in ho_status.items():
+        if key.startswith("move:") and str(val) == "1":
+            parts = key.split(":", 2)
+            if len(parts) == 3 and parts[1] in overrides:
+                overrides[parts[1]].add(parts[2])
+    return overrides
+
+
+def apply_section_override(section_rows, all_rows, link_col_idx, override_ids):
+    if not override_ids:
+        return section_rows
+    existing = {r[link_col_idx] for r in section_rows if link_col_idx < len(r)}
+    extras = [r for r in all_rows
+              if link_col_idx < len(r) and r[link_col_idx] in override_ids
+              and r[link_col_idx] not in existing]
+    return section_rows + extras
+
+
 def filter_snow_by_shift(rows, updated_col_idx, start_str, end_str, link_col_idx, flagged):
     out = []
     for row in rows:
