@@ -33,6 +33,7 @@ jobs:
           cf set-env shift-ho-dashboard HANA_PORT "443"
           cf set-env shift-ho-dashboard HANA_USER "${{ secrets.HANA_USER }}"
           cf set-env shift-ho-dashboard HANA_PASSWORD "${{ secrets.HANA_PASSWORD }}"
+          cf set-env shift-ho-dashboard UPLOAD_API_KEY "${{ secrets.UPLOAD_API_KEY }}"
 
       - name: Deploy
         run: cf push

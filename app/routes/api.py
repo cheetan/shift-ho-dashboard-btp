@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 from app.store import get_store
 from app.services.xlsx_parser import read_snow_xlsx, read_spc_xlsx
 from app.utils.auth import get_user_from_request
+from app.config import get_upload_api_key
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -14,6 +15,13 @@ ALL_SOURCES  = SNOW_SOURCES | {"spc"}
 
 @bp.route("/upload/<source>", methods=["POST"])
 def upload(source):
+    expected = get_upload_api_key()
+    if expected:
+        has_bearer = request.headers.get("Authorization", "").startswith("Bearer ")
+        has_key = request.headers.get("X-Upload-Key") == expected
+        if not has_bearer and not has_key:
+            return jsonify({"ok": False, "error": "Unauthorized"}), 401
+
     if source not in ALL_SOURCES:
         return jsonify({"ok": False, "error": f"Unknown source '{source}'"}), 400
 
