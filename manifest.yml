@@ -6,7 +6,7 @@ applications:
       - nodejs_buildpack
     env:
       destinations: >
-        [{"name":"shift-ho-backend","url":"https://shift-ho-dashboard.cfapps.us10-001.hana.ondemand.com","forwardAuthToken":true}]
+        [{"name":"shift-ho-backend","url":"https://shift-ho-dashboard.cfapps.eu12-001.hana.ondemand.com","forwardAuthToken":true}]
     services:
       - shift-ho-xsuaa
 
@@ -17,7 +17,7 @@ applications:
       - python_buildpack
     command: gunicorn wsgi:application --workers 2 --timeout 120
     services:
-      - shift-ho-hana
+      - ECS-handover-dashboard-db
       - shift-ho-xsuaa
       - shift-ho-alerts
     env:

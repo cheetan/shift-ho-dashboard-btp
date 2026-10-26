@@ -3,7 +3,7 @@
   "tenant-mode": "dedicated",
   "oauth2-configuration": {
     "redirect-uris": [
-      "https://shift-ho-approuter.cfapps.us10-001.hana.ondemand.com/**"
+      "https://shift-ho-approuter.cfapps.eu12-001.hana.ondemand.com/**"
     ]
   },
   "scopes": [],

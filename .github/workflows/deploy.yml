@@ -37,7 +37,11 @@ jobs:
       - name: Deploy
         run: cf push
 
+      - name: Add network policy (approuter → backend)
+        run: |
+          cf add-network-policy shift-ho-approuter shift-ho-dashboard --protocol tcp --port 8080
+
       - name: Verify health
         run: |
           sleep 15
-          curl -f https://shift-ho-dashboard.cfapps.us10-001.hana.ondemand.com/health
+          curl -f https://shift-ho-approuter.cfapps.eu12-001.hana.ondemand.com/health
