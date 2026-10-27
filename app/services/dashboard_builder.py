@@ -569,13 +569,15 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 <script>
 var sharedNotes = {ho_json};
 var serverVersions = {source_versions_json};
+var known = JSON.parse(JSON.stringify(serverVersions));
+var _saving = false;
 
 (function() {{
-  var known = JSON.parse(JSON.stringify(serverVersions));
   setInterval(function() {{
     fetch('/api/status')
       .then(function(r) {{ return r.json(); }})
       .then(function(latest) {{
+        if (_saving) {{ Object.keys(latest).forEach(function(k) {{ known[k] = latest[k]; }}); return; }}
         var changed = Object.keys(latest).some(function(k) {{
           return latest[k] && latest[k] !== known[k];
         }});
@@ -619,6 +621,7 @@ function saveInfo() {{
   _scheduleAutoSave();
 }}
 function _serverSave(showIndicator) {{
+  _saving = true;
   var notes = _collectNotes();
   var email = localStorage.getItem('user_email') || 'unknown';
   fetch('/api/export-notes', {{
@@ -630,10 +633,11 @@ function _serverSave(showIndicator) {{
       if (showIndicator) showSaved();
       fetch('/api/status').then(function(s) {{ return s.json(); }}).then(function(latest) {{
         Object.keys(latest).forEach(function(k) {{ known[k] = latest[k]; }});
-      }}).catch(function() {{}});
+        _saving = false;
+      }}).catch(function() {{ _saving = false; }});
     }}
-    else {{ console.warn('Server save failed: HTTP ' + r.status); showSaveError(r.status); }}
-  }}).catch(function(e) {{ console.warn('Auto-save error:', e); showSaveError(0); }});
+    else {{ _saving = false; console.warn('Server save failed: HTTP ' + r.status); showSaveError(r.status); }}
+  }}).catch(function(e) {{ _saving = false; console.warn('Auto-save error:', e); showSaveError(0); }});
 }}
 function hideRow(btn) {{
   var tr = btn.closest('tr');
