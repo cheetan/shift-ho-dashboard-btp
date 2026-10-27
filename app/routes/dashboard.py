@@ -57,11 +57,21 @@ def index():
 
     overrides = get_section_overrides(ho_status)
 
+    # Active Alerts subsection
+    a_state_idx = safe_col(ah, "State")
+    ar_active   = filter_snow_by_status(ar, a_state_idx, {"New", "In Progress"}, a_link_idx, set())
+    ar_active   = apply_section_override(ar_active, ar, a_link_idx, overrides["alerts-active"])
+
     # Active Cases subsection
     c_state_idx = safe_col(ch, "State")
     cr_active   = filter_snow_by_status(cr, c_state_idx, {"New", "In Progress"},
                                         c_link_idx, set())
     cr_active   = apply_section_override(cr_active, cr, c_link_idx, overrides["cases-active"])
+
+    # Active INCs subsection
+    i_state_idx = safe_col(ih, "State")
+    ir_active   = filter_snow_by_status(ir, i_state_idx, {"New", "In Progress"}, i_link_idx, set())
+    ir_active   = apply_section_override(ir_active, ir, i_link_idx, overrides["inc-active"])
 
     # SPC sub-sections
     lr_flagged   = get_flagged_ids(ho_status, "spc-tbc")
@@ -105,5 +115,9 @@ def index():
         sr_prev=sr_prev,
         cr_active=cr_active,
         cr_all=cr,
+        ar_active=ar_active,
+        ar_all=ar,
+        ir_active=ir_active,
+        ir_all=ir,
     )
     return Response(html, mimetype="text/html")
