@@ -362,8 +362,7 @@ header{{padding:16px 24px 12px;border-bottom:1px solid var(--border);display:fle
 header h1{{font-size:18px;font-weight:600;color:#fff}}
 .shift-label{{font-size:13px;font-weight:500;color:var(--accent);flex:1;padding-left:16px}}
 header .meta{{font-size:11px;color:var(--muted);text-align:right;line-height:1.7;margin-left:auto}}
-.user-pill{{font-size:11px;color:var(--muted);cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;white-space:nowrap}}
-.user-pill:hover{{border-color:var(--accent);color:var(--accent)}}
+.user-pill{{font-size:11px;color:var(--muted);padding:4px 8px;border:1px solid var(--border);border-radius:6px;white-space:nowrap}}
 .export-btn{{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;white-space:nowrap}}
 .export-btn:hover{{border-color:var(--accent);color:var(--accent)}}
 main{{padding:20px 24px}}
@@ -480,7 +479,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <h1>&#x1F4CB; Shift Handover Dashboard EU DB L2</h1>
   <div class="shift-label">{shift_label}</div>
   <div class="meta">Generated: {now}<br>SPC data: {spc_updated_str}</div>
-  <span class="user-pill" onclick="changeEmail()" title="Click to change your email">&#x1F464; <span id="user-email-display">—</span></span>
+  <span class="user-pill">&#x1F464; <span id="user-email-display">—</span></span>
   <button class="export-btn" onclick="exportNotes()">&#x1F4BE; Save Notes to HANA</button>
   <button class="export-btn" id="notify-btn" onclick="notifyTeam(this)">&#x1F514; Notify Team</button>
 </header>
@@ -755,15 +754,7 @@ function uploadFile(input, source) {{
     }}).catch(function(e) {{ alert('Upload error: ' + e); if (btn) {{ btn.textContent = '὎4 Upload'; btn.classList.remove('uploading'); }} }});
 }}
 function promptEmail() {{
-  var e = prompt('Enter your SAP email (tracks who uploaded data):') || 'unknown';
-  localStorage.setItem('user_email', e);
-  document.getElementById('user-email-display').textContent = e.split('@')[0] || e;
-  return e;
-}}
-function changeEmail() {{
-  var cur = localStorage.getItem('user_email') || '';
-  var e = prompt('Enter your SAP email:', cur);
-  if (e) {{ localStorage.setItem('user_email', e); document.getElementById('user-email-display').textContent = e.split('@')[0] || e; }}
+  return 'unknown';
 }}
 function toggle(id) {{
   var el = document.getElementById(id); var tog = document.getElementById(id+'-tog');
@@ -840,7 +831,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   if (serverUser && serverUser !== 'unknown') {{
     localStorage.setItem('user_email', serverUser);
   }}
-  var em = localStorage.getItem('user_email') || '—';
+  var em = serverUser || '—';
   document.getElementById('user-email-display').textContent = em === '—' ? '—' : (em.split('@')[0] || em);
   switchTab(localStorage.getItem('active_tab') || 'spc');
 }});
