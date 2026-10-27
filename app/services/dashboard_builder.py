@@ -52,7 +52,7 @@ def reformat_date_dmy(val):
 def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=None,
                  link_url=None, col_format=None, sort_col=None, sort_desc=False,
                  editable_col=None, section_id="", longrunner=False, lr_section_id=None, link_cols=None,
-                 sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None):
+                 sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None, remove_to_all=False):
     rename     = rename or {}
     col_format = col_format or {}
     link_cols  = link_cols or {}
@@ -108,7 +108,10 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
 
         if hideable:
             hide_key = f"hide:{section_id}:{ticket_key}"
-            hide_td = f'<td class="hide-td"><button class="hide-btn" data-key="{hide_key}" onclick="hideRow(this)" title="Remove from view">&#x2715;</button></td>'
+            if remove_to_all:
+                hide_td = f'<td class="hide-td"><button class="hide-btn" data-key="{hide_key}" onclick="removeFromActive(this)" title="Send to All">&#x2715;</button></td>'
+            else:
+                hide_td = f'<td class="hide-td"><button class="hide-btn" data-key="{hide_key}" onclick="hideRow(this)" title="Remove from view">&#x2715;</button></td>'
         else:
             hide_td = ""
 
@@ -216,13 +219,13 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         ah, ar_active or [], _alert_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="alerts-active", hideable=True)
+        editable_col="HO Status", section_id="alerts-active", hideable=True, remove_to_all=True)
 
     alert_all_t = render_table(
         ah, ar_all or ar, _alert_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="alerts-all", hideable=True,
+        editable_col="HO Status", section_id="alerts-all", hideable=False,
         coverage_map=alerts_coverage,
         move_sections=[("alerts-active", "Active Alerts")])
 
@@ -237,13 +240,13 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         ch, cr_active or [], _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="cases-active", hideable=True)
+        editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True)
 
     case_all_t = render_table(
         ch, cr_all or cr, _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="cases-all", hideable=True,
+        editable_col="HO Status", section_id="cases-all", hideable=False,
         coverage_map=cases_coverage,
         move_sections=[("cases-active", "Active Cases")])
 
@@ -258,13 +261,13 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         ih, ir_active or [], _inc_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="inc-active", hideable=True)
+        editable_col="HO Status", section_id="inc-active", hideable=True, remove_to_all=True)
 
     inc_all_t = render_table(
         ih, ir_all or ir, _inc_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="inc-all", hideable=True,
+        editable_col="HO Status", section_id="inc-all", hideable=False,
         coverage_map=inc_coverage,
         move_sections=[("inc-active", "Active INCs")])
 
@@ -755,6 +758,22 @@ function saveLR(el) {{
     else showSaveError(r.status);
   }}).catch(function(e) {{ showSaveError(0); }});
 }}
+function removeFromActive(btn) {{
+  var key = btn.dataset.key;
+  var parts = key.split(':');
+  var excludeKey = 'exclude:' + parts[1] + ':' + parts.slice(2).join(':');
+  var notes = _collectNotes();
+  notes[excludeKey] = '1';
+  var email = localStorage.getItem('user_email') || 'unknown';
+  fetch('/api/export-notes', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
+    body: JSON.stringify(notes)
+  }}).then(function(r) {{
+    if (r.ok) location.reload();
+    else showSaveError(r.status);
+  }}).catch(function(e) {{ showSaveError(0); }});
+}}
 function moveTicket(sel) {{
   _scheduleAutoSave();
 }}
@@ -844,6 +863,9 @@ function _collectNotes() {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
+    if (el.value && el.value.endsWith('-active')) {{
+      delete notes['exclude:' + el.value + ':' + tid];
+    }}
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
   var infoVal = document.getElementById('info-area').innerText.trim();

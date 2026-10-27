@@ -5,7 +5,7 @@ from app.services.shift import detect_shift, get_shift_window, get_next_shift_wi
 from app.services.xlsx_parser import (
     safe_col, filter_snow_by_shift, filter_snow_by_status, filter_spc_by_shift,
     filter_spc_longrunners, filter_spc_by_last_changed, get_flagged_ids,
-    get_section_overrides, apply_section_override,
+    get_section_overrides, apply_section_override, get_excluded_ids,
 )
 from app.services.dashboard_builder import build_html
 from app.utils.auth import get_user_from_request
@@ -57,21 +57,24 @@ def index():
 
     overrides = get_section_overrides(ho_status)
 
+    ar_excluded = get_excluded_ids(ho_status, "alerts-active")
+    cr_excluded = get_excluded_ids(ho_status, "cases-active")
+    ir_excluded = get_excluded_ids(ho_status, "inc-active")
+
     # Active Alerts subsection
     a_state_idx = safe_col(ah, "State")
-    ar_active   = filter_snow_by_status(ar, a_state_idx, {"New", "In Progress"}, a_link_idx, set())
-    ar_active   = apply_section_override(ar_active, ar, a_link_idx, overrides["alerts-active"])
+    ar_active   = filter_snow_by_status(ar, a_state_idx, {"New", "In Progress"}, a_link_idx, set(), excluded=ar_excluded)
+    ar_active   = apply_section_override(ar_active, ar, a_link_idx, overrides["alerts-active"], excluded=ar_excluded)
 
     # Active Cases subsection
     c_state_idx = safe_col(ch, "State")
-    cr_active   = filter_snow_by_status(cr, c_state_idx, {"New", "In Progress"},
-                                        c_link_idx, set())
-    cr_active   = apply_section_override(cr_active, cr, c_link_idx, overrides["cases-active"])
+    cr_active   = filter_snow_by_status(cr, c_state_idx, {"New", "In Progress"}, c_link_idx, set(), excluded=cr_excluded)
+    cr_active   = apply_section_override(cr_active, cr, c_link_idx, overrides["cases-active"], excluded=cr_excluded)
 
     # Active INCs subsection
     i_state_idx = safe_col(ih, "State")
-    ir_active   = filter_snow_by_status(ir, i_state_idx, {"New", "In Progress"}, i_link_idx, set())
-    ir_active   = apply_section_override(ir_active, ir, i_link_idx, overrides["inc-active"])
+    ir_active   = filter_snow_by_status(ir, i_state_idx, {"New", "In Progress"}, i_link_idx, set(), excluded=ir_excluded)
+    ir_active   = apply_section_override(ir_active, ir, i_link_idx, overrides["inc-active"], excluded=ir_excluded)
 
     # SPC sub-sections
     lr_flagged   = get_flagged_ids(ho_status, "spc-tbc")
