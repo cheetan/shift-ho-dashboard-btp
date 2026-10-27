@@ -145,34 +145,27 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
     return f'<div class="table-wrap"><table><thead><tr>{th}</tr></thead><tbody>{"".join(tbody)}</tbody></table></div>'
 
 
-def stat_tile(label, total, pcounts):
-    p1, p2 = pcounts.get(1, 0), pcounts.get(2, 0)
-    pills = ""
-    if p1: pills += f'<span class="badge p1">P1: {p1}</span>'
-    if p2: pills += f'<span class="badge p2">P2: {p2}</span>'
-    hi = " hi" if p1 or p2 else ""
-    return f"""<div class="stat-tile{hi}">
-  <div class="stat-num">{total}</div>
-  <div class="stat-label">{label}</div>
-  <div class="stat-pills">{pills or '<span class="ok">All P3/P4</span>'}</div>
-</div>"""
-
-
-def _fresh_bar_item(source_key, label, source_meta):
-    m = (source_meta or {}).get(source_key, {})
+def source_card(source_key, label, total, pcounts, source_meta):
+    m        = (source_meta or {}).get(source_key, {})
     by       = m.get("uploaded_by", "—")
     at       = m.get("uploaded_at", "—")
     count    = m.get("row_count", 0)
     by_short = by.split("@")[0] if "@" in by else by
-    return f"""<div class="fresh-item">
-  <div class="fresh-info">
-    <span class="fresh-label">{label}</span>
-    <span class="fresh-count">{count} rows</span>
-    <span class="fresh-who">by {by_short} at {at}</span>
+    p1, p2   = pcounts.get(1, 0), pcounts.get(2, 0)
+    pills    = ""
+    if p1: pills += f'<span class="badge p1">P1: {p1}</span>'
+    if p2: pills += f'<span class="badge p2">P2: {p2}</span>'
+    hi = " hi" if p1 or p2 else ""
+    return f"""<div class="source-card{hi}">
+  <div class="source-card-top">
+    <span class="source-card-label">{label}</span>
+    <label class="upload-btn" title="Upload new {label} XLSX">
+      &#x1F4E4; Upload<input type="file" accept=".xlsx" style="display:none" onchange="uploadFile(this,'{source_key}')">
+    </label>
   </div>
-  <label class="upload-btn" title="Upload new {label} XLSX">
-    &#x1F4E4; Upload<input type="file" accept=".xlsx" style="display:none" onchange="uploadFile(this,'{source_key}')">
-  </label>
+  <div class="source-card-num">{total}</div>
+  <div class="source-card-pills">{pills or '<span class="ok">All P3/P4</span>'}</div>
+  <div class="source-card-meta">by {by_short} &middot; {at} &middot; {count} rows</div>
 </div>"""
 
 
@@ -288,11 +281,11 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         editable_col="HO Status", section_id="spc-all", hideable=True,
         coverage_map=coverage)
 
-    fresh_bar = (
-        _fresh_bar_item("snow_alert", "Snow Alerts", source_meta) +
-        _fresh_bar_item("snow_case",  "Snow Cases",  source_meta) +
-        _fresh_bar_item("snow_inc",   "Snow INCs",   source_meta) +
-        _fresh_bar_item("spc",        "SPC Report",  source_meta)
+    cards = (
+        source_card("snow_case",  "Snow Cases",         len(cr),         cpc,  source_meta) +
+        source_card("snow_alert", "Snow Alerts",        len(ar),         apc,  source_meta) +
+        source_card("snow_inc",   "Snow Internal INCs", len(ir),         ipc,  source_meta) +
+        source_card("spc",        "SPC Report",         len(sr_updated), spc_c, source_meta)
     )
 
     def section(sid, icon, title, count, table_html, subtitle=""):
@@ -366,12 +359,14 @@ header .meta{{font-size:11px;color:var(--muted);text-align:right;line-height:1.7
 .export-btn{{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;white-space:nowrap}}
 .export-btn:hover{{border-color:var(--accent);color:var(--accent)}}
 main{{padding:20px 24px}}
-.freshness-bar{{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}}
-.fresh-item{{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;flex:1;min-width:200px}}
-.fresh-info{{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}}
-.fresh-label{{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}}
-.fresh-count{{font-size:15px;font-weight:700;color:var(--accent);line-height:1}}
-.fresh-who{{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.source-cards{{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}}
+.source-card{{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;flex:1;min-width:180px;display:flex;flex-direction:column;gap:4px}}
+.source-card.hi{{border-color:rgba(250,140,22,.4)}}
+.source-card-top{{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}}
+.source-card-label{{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}}
+.source-card-num{{font-size:34px;font-weight:700;color:#fff;line-height:1}}
+.source-card-pills{{display:flex;gap:6px;flex-wrap:wrap;min-height:18px}}
+.source-card-meta{{font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .upload-btn{{background:var(--border);border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}}
 .upload-btn:hover{{border-color:var(--accent);color:var(--accent)}}
 .upload-btn.uploading{{color:var(--p3);border-color:var(--p3)}}
@@ -380,12 +375,6 @@ main{{padding:20px 24px}}
 .ho-pill strong{{color:var(--text);font-size:22px;display:block;line-height:1.2}}
 .ho-pill.hi{{border-color:var(--p2)}}
 .ho-pill.hi strong{{color:var(--p2)}}
-.stats{{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}}
-.stat-tile{{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;min-width:150px;flex:1}}
-.stat-tile.hi{{border-color:rgba(250,140,22,.4)}}
-.stat-num{{font-size:34px;font-weight:700;color:#fff;line-height:1}}
-.stat-label{{font-size:11px;color:var(--muted);margin:4px 0 8px;text-transform:uppercase;letter-spacing:.05em}}
-.stat-pills{{display:flex;gap:6px;flex-wrap:wrap}}
 .ok{{font-size:11px;color:var(--p4)}}
 .section{{margin-bottom:20px}}
 .section-header{{display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;user-select:none}}
@@ -485,15 +474,8 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </header>
 <main>
 
-<div class="freshness-bar">
-{fresh_bar}
-</div>
-
-<div class="stats">
-  {stat_tile("Snow Cases",  len(cr), cpc)}
-  {stat_tile("Snow Alerts", len(ar), apc)}
-  {stat_tile("Snow Internal INCs", len(ir), ipc)}
-  {stat_tile("SPC Tickets Updated Former Shift", len(sr_updated), spc_c)}
+<div class="source-cards">
+{cards}
 </div>
 
 <div class="tab-bar">
