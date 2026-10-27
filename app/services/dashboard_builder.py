@@ -481,7 +481,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <div class="shift-label">{shift_label}</div>
   <div class="meta">Generated: {now}<br>SPC data: {spc_updated_str}</div>
   <span class="user-pill" onclick="changeEmail()" title="Click to change your email">&#x1F464; <span id="user-email-display">—</span></span>
-  <button class="export-btn" onclick="exportNotes()">&#x1F4BE; Export &amp; Save Notes</button>
+  <button class="export-btn" onclick="exportNotes()">&#x1F4BE; Save Notes to HANA</button>
   <button class="export-btn" id="notify-btn" onclick="notifyTeam(this)">&#x1F514; Notify Team</button>
 </header>
 <main>
@@ -706,10 +706,6 @@ function _collectNotes() {{
   return notes;
 }}
 function exportNotes() {{
-  var notes = _collectNotes();
-  var blob = new Blob([JSON.stringify(notes, null, 2)], {{type: 'application/json'}});
-  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'ho_status.json'; a.click(); URL.revokeObjectURL(a.href);
   _serverSave(true);
 }}
 function notifyTeam(btn) {{
