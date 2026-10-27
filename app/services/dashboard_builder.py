@@ -179,7 +179,7 @@ def source_card(source_key, label, pcounts, source_meta):
 
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
-               source_meta=None, current_user="", ho_updated_at="", sr_prev=None, cr_active=None):
+               source_meta=None, current_user="", ho_updated_at="", sr_prev=None, cr_active=None, cr_all=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
@@ -224,7 +224,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         editable_col="HO Status", section_id="cases-active", hideable=True)
 
     case_all_t = render_table(
-        ch, cr, _case_cols,
+        ch, cr_all or cr, _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="cases-all", hideable=True,
@@ -502,7 +502,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 <div class="tab-bar">
   <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_all)}</span></button>
   <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
-  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr)}</span></button>
+  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr_all or cr)}</span></button>
   <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar)}</span></button>
   <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir)}</span></button>
 </div>
@@ -512,7 +512,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <div class="section-header" onclick="toggle('cases')">
     <span class="icon">&#x1F4CB;</span>
     <h2>Snow Cases</h2><span class="section-sub">{shift_label}</span>
-    <span class="count">{len(cr)}</span>
+    <span class="count">{len(cr_all or cr)}</span>
     <span class="toggle" id="cases-tog">&#9660;</span>
   </div>
   <div class="section-body" id="cases">
@@ -521,8 +521,8 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <div class="section-header" onclick="toggle('cases-all')">
     <span class="icon">&#x1F4CB;</span>
     <h2>All Cases</h2>
-    <span class="section-sub">All shift cases &mdash; {len(cr)} tickets</span>
-    <span class="count">{len(cr)}</span>
+    <span class="section-sub">All shift cases &mdash; {len(cr_all or cr)} tickets</span>
+    <span class="count">{len(cr_all or cr)}</span>
     <span class="toggle" id="cases-all-tog">&#9654;</span>
   </div>
   <div class="section-body" id="cases-all" style="display:none">

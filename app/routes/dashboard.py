@@ -59,9 +59,9 @@ def index():
 
     # Active Cases subsection
     c_state_idx = safe_col(ch, "State")
-    cr_active   = filter_snow_by_status(cr_filtered, c_state_idx, {"New", "In Progress"},
+    cr_active   = filter_snow_by_status(cr, c_state_idx, {"New", "In Progress"},
                                         c_link_idx, set())
-    cr_active   = apply_section_override(cr_active, cr_filtered, c_link_idx, overrides["cases-active"])
+    cr_active   = apply_section_override(cr_active, cr, c_link_idx, overrides["cases-active"])
 
     # SPC sub-sections
     lr_flagged   = get_flagged_ids(ho_status, "spc-tbc")
@@ -104,5 +104,6 @@ def index():
         ho_updated_at=ho_updated_at,
         sr_prev=sr_prev,
         cr_active=cr_active,
+        cr_all=cr,
     )
     return Response(html, mimetype="text/html")
