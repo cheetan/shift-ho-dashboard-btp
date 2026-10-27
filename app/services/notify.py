@@ -36,7 +36,7 @@ def build_shift_message(store) -> tuple:
     s_subj = safe_col(sh, "Subject")
     s_link = safe_col(sh, "Ticket ID")
     s_lc   = safe_col(sh, "Last Changed At")
-    lr_f   = get_flagged_ids(ho, "spc-lr")
+    lr_f   = get_flagged_ids(ho, "spc-tbc")
 
     sr_cur = filter_spc_by_shift(sr_all, s_subj, shift_start, shift_end,
                                   s_link, get_flagged_ids(ho, "spc-current"))

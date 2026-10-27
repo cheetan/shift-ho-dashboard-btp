@@ -176,7 +176,7 @@ def get_flagged_ids(ho_status, section_id):
 
 
 def get_section_overrides(ho_status: dict) -> dict:
-    overrides = {"spc-current": set(), "spc-next": set(), "spc-lr": set(), "spc-updated": set()}
+    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set()}
     for key, val in ho_status.items():
         if key.startswith("move:") and str(val) == "1":
             parts = key.split(":", 2)

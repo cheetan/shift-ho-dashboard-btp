@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime, timezone
 
-from app.services.shift import parse_spc_subject_dt
+from app.services.shift import parse_spc_subject_dt, EET
 from app.services.xlsx_parser import safe_col
 
 
@@ -73,9 +73,9 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
         return '<p class="empty">No tickets found.</p>'
 
     hide_th = '<th class="hide-th"></th>'          if hideable          else ""
-    lr_th   = '<th class="lr-th">Longrunner</th>'  if longrunner        else ""
+    lr_th   = '<th class="lr-th">To be checked</th>'  if longrunner        else ""
     extra_th = f'<th>{editable_col}</th>'           if editable_col      else ""
-    cov_th  = '<th class="cov-th">Coverage</th>'   if coverage_map is not None else ""
+    cov_th  = '<th class="cov-th">Section</th>'     if coverage_map is not None else ""
     move_th = '<th class="move-th">Move to</th>'   if coverage_map is not None else ""
     th = hide_th + "".join(f"<th>{h}</th>" for h in actual) + lr_th + extra_th + cov_th + move_th
 
@@ -122,7 +122,8 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             cov_label = coverage_map.get(ticket_key, "") if ticket_key else ""
             if cov_label:
                 _cov_cls = {"Current Shift": "cov-current", "Next Shift": "cov-next",
-                            "Longrunner": "cov-lr", "Updated": "cov-updated"}.get(cov_label, "")
+                            "To be checked": "cov-tbc", "Updated": "cov-updated",
+                            "Previous Shift": "cov-prev"}.get(cov_label, "")
                 cov_cell = f'<span class="cov-badge {_cov_cls}">{cov_label}</span>'
             else:
                 cov_cell = '<span class="cov-none">—</span>'
@@ -130,9 +131,10 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             tds.append(
                 f'<td><select class="move-select" data-ticket="{ticket_key}" onchange="moveTicket(this)">'
                 f'<option value="">— auto —</option>'
+                f'<option value="spc-prev">Previous Shift</option>'
                 f'<option value="spc-current">Current Shift</option>'
                 f'<option value="spc-next">Next Shift</option>'
-                f'<option value="spc-lr">Longrunners</option>'
+                f'<option value="spc-tbc">To be checked</option>'
                 f'<option value="spc-updated">Updated</option>'
                 f'</select></td>'
             )
@@ -143,34 +145,31 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
     return f'<div class="table-wrap"><table><thead><tr>{th}</tr></thead><tbody>{"".join(tbody)}</tbody></table></div>'
 
 
-def stat_tile(label, total, pcounts):
+def source_card(source_key, label, pcounts, source_meta):
+    m     = (source_meta or {}).get(source_key, {})
+    by    = m.get("uploaded_by", "—")
+    at    = m.get("uploaded_at", "—")
+    count = m.get("row_count", 0)
+    try:
+        at_dt  = datetime.strptime(at[:16], "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+        at_fmt = at_dt.astimezone(EET).strftime("%d.%m.%Y %H:%M")
+    except Exception:
+        at_fmt = at
     p1, p2 = pcounts.get(1, 0), pcounts.get(2, 0)
-    pills = ""
+    pills  = ""
     if p1: pills += f'<span class="badge p1">P1: {p1}</span>'
     if p2: pills += f'<span class="badge p2">P2: {p2}</span>'
     hi = " hi" if p1 or p2 else ""
-    return f"""<div class="stat-tile{hi}">
-  <div class="stat-num">{total}</div>
-  <div class="stat-label">{label}</div>
-  <div class="stat-pills">{pills or '<span class="ok">All P3/P4</span>'}</div>
-</div>"""
-
-
-def _fresh_bar_item(source_key, label, source_meta):
-    m = (source_meta or {}).get(source_key, {})
-    by       = m.get("uploaded_by", "—")
-    at       = m.get("uploaded_at", "—")
-    count    = m.get("row_count", 0)
-    by_short = by.split("@")[0] if "@" in by else by
-    return f"""<div class="fresh-item">
-  <div class="fresh-info">
-    <span class="fresh-label">{label}</span>
-    <span class="fresh-count">{count} rows</span>
-    <span class="fresh-who">by {by_short} at {at}</span>
+    return f"""<div class="source-card{hi}">
+  <div class="source-card-top">
+    <span class="source-card-label">{label}</span>
+    <label class="upload-btn" title="Upload new {label} XLSX">
+      &#x1F4E4; Upload<input type="file" accept=".xlsx" style="display:none" onchange="uploadFile(this,'{source_key}')">
+    </label>
   </div>
-  <label class="upload-btn" title="Upload new {label} XLSX">
-    &#x1F4E4; Upload<input type="file" accept=".xlsx" style="display:none" onchange="uploadFile(this,'{source_key}')">
-  </label>
+  <div class="source-card-num">{count}</div>
+  <div class="source-card-pills">{pills or '<span class="ok">All P3/P4</span>'}</div>
+  <div class="source-card-meta">XLSX uploaded by {by} on {at_fmt} EET</div>
 </div>"""
 
 
@@ -178,7 +177,7 @@ def _fresh_bar_item(source_key, label, source_meta):
 
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
-               source_meta=None, current_user="", ho_updated_at=""):
+               source_meta=None, current_user="", ho_updated_at="", sr_prev=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
@@ -196,7 +195,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     ipc  = count_by_priority(ir, i_pri)
     spc_c = count_by_priority(sr_all, s_pri)
 
-    sched_activities = len(sr_current) + len(sr_next)
+    sched_activities = len(sr_current) + len(sr_prev or [])
 
     snow_url    = "https://itsm.services.sap//workspace_redirect.do?sysparm_number={}"
     snow_rename = {"Install Base Item": "SIDCID", "Number": "Ticket ID",
@@ -247,10 +246,15 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         editable_col="HO Status", section_id="spc-next", longrunner=True,
         sort_key_fn=spc_subj_sort, hideable=True)
+    spc_prev_t = render_table(sh, sr_prev or [], spc_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
+        rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
+        editable_col="HO Status", section_id="spc-prev", longrunner=True,
+        sort_key_fn=spc_subj_sort, hideable=True)
     spc_lr_t = render_table(sh, sr_lr, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-lr", longrunner=True, hideable=True)
+        editable_col="HO Status", section_id="spc-tbc", longrunner=False, hideable=True)
     spc_updated_t = render_table(sh, sr_updated, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
@@ -267,10 +271,13 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         if _tid and _tid not in coverage: coverage[_tid] = "Next Shift"
     for _r in sr_lr:
         _tid = _r[spc_link_idx] if spc_link_idx < len(_r) else ""
-        if _tid and _tid not in coverage: coverage[_tid] = "Longrunner"
+        if _tid and _tid not in coverage: coverage[_tid] = "To be checked"
     for _r in sr_updated:
         _tid = _r[spc_link_idx] if spc_link_idx < len(_r) else ""
         if _tid and _tid not in coverage: coverage[_tid] = "Updated"
+    for _r in (sr_prev or []):
+        _tid = _r[spc_link_idx] if spc_link_idx < len(_r) else ""
+        if _tid and _tid not in coverage: coverage[_tid] = "Previous Shift"
     spc_all_t = render_table(sh, sr_all_raw, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
@@ -278,11 +285,11 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         editable_col="HO Status", section_id="spc-all", hideable=True,
         coverage_map=coverage)
 
-    fresh_bar = (
-        _fresh_bar_item("snow_alert", "Snow Alerts", source_meta) +
-        _fresh_bar_item("snow_case",  "Snow Cases",  source_meta) +
-        _fresh_bar_item("snow_inc",   "Snow INCs",   source_meta) +
-        _fresh_bar_item("spc",        "SPC Report",  source_meta)
+    cards = (
+        source_card("spc",        "SPC XLSX",                 spc_c, source_meta) +
+        source_card("snow_case",  "Snow Cases XLSX",          cpc,   source_meta) +
+        source_card("snow_alert", "Snow Alerts XLSX",         apc,   source_meta) +
+        source_card("snow_inc",   "Snow Internal INCs XLSX",  ipc,   source_meta)
     )
 
     def section(sid, icon, title, count, table_html, subtitle=""):
@@ -352,17 +359,18 @@ header{{padding:16px 24px 12px;border-bottom:1px solid var(--border);display:fle
 header h1{{font-size:18px;font-weight:600;color:#fff}}
 .shift-label{{font-size:13px;font-weight:500;color:var(--accent);flex:1;padding-left:16px}}
 header .meta{{font-size:11px;color:var(--muted);text-align:right;line-height:1.7;margin-left:auto}}
-.user-pill{{font-size:11px;color:var(--muted);cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:6px;white-space:nowrap}}
-.user-pill:hover{{border-color:var(--accent);color:var(--accent)}}
+.user-pill{{font-size:11px;color:var(--muted);padding:4px 8px;border:1px solid var(--border);border-radius:6px;white-space:nowrap}}
 .export-btn{{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;white-space:nowrap}}
 .export-btn:hover{{border-color:var(--accent);color:var(--accent)}}
 main{{padding:20px 24px}}
-.freshness-bar{{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}}
-.fresh-item{{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;flex:1;min-width:200px}}
-.fresh-info{{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}}
-.fresh-label{{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}}
-.fresh-count{{font-size:15px;font-weight:700;color:var(--accent);line-height:1}}
-.fresh-who{{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.source-cards{{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}}
+.source-card{{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;flex:1;min-width:180px;display:flex;flex-direction:column;gap:4px}}
+.source-card.hi{{border-color:rgba(250,140,22,.4)}}
+.source-card-top{{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}}
+.source-card-label{{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}}
+.source-card-num{{font-size:34px;font-weight:700;color:#fff;line-height:1}}
+.source-card-pills{{display:flex;gap:6px;flex-wrap:wrap;min-height:18px}}
+.source-card-meta{{font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .upload-btn{{background:var(--border);border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}}
 .upload-btn:hover{{border-color:var(--accent);color:var(--accent)}}
 .upload-btn.uploading{{color:var(--p3);border-color:var(--p3)}}
@@ -371,12 +379,6 @@ main{{padding:20px 24px}}
 .ho-pill strong{{color:var(--text);font-size:22px;display:block;line-height:1.2}}
 .ho-pill.hi{{border-color:var(--p2)}}
 .ho-pill.hi strong{{color:var(--p2)}}
-.stats{{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}}
-.stat-tile{{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;min-width:150px;flex:1}}
-.stat-tile.hi{{border-color:rgba(250,140,22,.4)}}
-.stat-num{{font-size:34px;font-weight:700;color:#fff;line-height:1}}
-.stat-label{{font-size:11px;color:var(--muted);margin:4px 0 8px;text-transform:uppercase;letter-spacing:.05em}}
-.stat-pills{{display:flex;gap:6px;flex-wrap:wrap}}
 .ok{{font-size:11px;color:var(--p4)}}
 .section{{margin-bottom:20px}}
 .section-header{{display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;user-select:none}}
@@ -438,8 +440,9 @@ tr.row-hidden{{opacity:.5;background:repeating-linear-gradient(135deg,transparen
 .cov-badge{{display:inline-block;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap}}
 .cov-current{{background:rgba(82,196,26,.20);color:#52c41a}}
 .cov-next{{background:rgba(250,219,20,.20);color:#c8a800}}
-.cov-lr{{background:rgba(255,77,79,.20);color:#ff4d4f}}
+.cov-tbc{{background:rgba(255,77,79,.20);color:#ff4d4f}}
 .cov-updated{{background:rgba(79,142,247,.20);color:#4f8ef7}}
+.cov-prev{{background:rgba(147,112,219,.20);color:#9370db}}
 .cov-none{{color:var(--muted)}}
 .move-th{{width:120px}}
 .move-select{{font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;width:100%}}
@@ -448,6 +451,14 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 .hide-covered tr.row-covered{{display:none}}
 .save-indicator{{position:fixed;bottom:24px;right:24px;background:#1a2e1a;border:2px solid #52c41a;color:#52c41a;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 4px 20px rgba(82,196,26,.35);letter-spacing:.02em;z-index:9999}}
 .save-indicator.show{{opacity:1;transform:translateY(0)}}
+.tab-bar{{display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)}}
+.tab-btn{{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--muted);padding:10px 20px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:-2px;border-radius:6px 6px 0 0;font-family:var(--font);white-space:nowrap}}
+.tab-btn:hover{{color:var(--text)}}
+.tab-btn.active{{color:var(--accent);border-bottom-color:var(--accent)}}
+.tab-count{{background:var(--border);border-radius:10px;padding:1px 7px;font-size:11px;color:var(--muted)}}
+.tab-btn.active .tab-count{{background:rgba(79,142,247,.2);color:var(--accent)}}
+.tab-panel{{display:none}}
+.tab-panel.active{{display:block}}
 </style>
 </head>
 <body>
@@ -461,30 +472,38 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <h1>&#x1F4CB; Shift Handover Dashboard EU DB L2</h1>
   <div class="shift-label">{shift_label}</div>
   <div class="meta">Generated: {now}<br>SPC data: {spc_updated_str}</div>
-  <span class="user-pill" onclick="changeEmail()" title="Click to change your email">&#x1F464; <span id="user-email-display">—</span></span>
-  <button class="export-btn" onclick="exportNotes()">&#x1F4BE; Export &amp; Save Notes</button>
+  <span class="user-pill">&#x1F464; <span id="user-email-display">—</span></span>
+  <button class="export-btn" onclick="exportNotes()">&#x1F4BE; Save Notes to HANA</button>
   <button class="export-btn" id="notify-btn" onclick="notifyTeam(this)">&#x1F514; Notify Team</button>
 </header>
 <main>
 
-<div class="freshness-bar">
-{fresh_bar}
+<div class="source-cards">
+{cards}
 </div>
+
+<div class="tab-bar">
+  <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_all)}</span></button>
+  <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
+  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr)}</span></button>
+  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar)}</span></button>
+  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir)}</span></button>
+</div>
+
+<div id="tab-cases" class="tab-panel">
+{section("cases",  "&#x1F4CB;",        "Snow Cases",          len(cr), case_t,  subtitle=shift_label)}
+</div>
+<div id="tab-alerts" class="tab-panel">
+{section("alerts", "&#x26A0;&#xFE0F;", "Snow Alerts",         len(ar), alert_t, subtitle=shift_label)}
+</div>
+<div id="tab-inc" class="tab-panel">
+{section("inc",    "&#x1F6A8;",        "Snow Internal INCs",  len(ir), inc_t,   subtitle=shift_label)}
+</div>
+<div id="tab-spc" class="tab-panel">
 
 <div class="ho-bar">
   <div class="ho-pill {'hi' if sched_activities else ''}"><strong>{sched_activities}</strong>&#x1F4C5; Scheduled Activities</div>
 </div>
-
-<div class="stats">
-  {stat_tile("Snow Cases",  len(cr), cpc)}
-  {stat_tile("Snow Alerts", len(ar), apc)}
-  {stat_tile("Snow Internal INCs", len(ir), ipc)}
-  {stat_tile("SPC Tickets Updated Former Shift", len(sr_updated), spc_c)}
-</div>
-
-{section("cases",  "&#x1F4CB;",        "Snow Cases",          len(cr), case_t,  subtitle=shift_label)}
-{section("alerts", "&#x26A0;&#xFE0F;", "Snow Alerts",         len(ar), alert_t, subtitle=shift_label)}
-{section("inc",    "&#x1F6A8;",        "Snow Internal INCs",  len(ir), inc_t,   subtitle=shift_label)}
 
 <div class="section">
   <div class="section-header" onclick="toggle('spc')">
@@ -495,9 +514,10 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <span class="toggle" id="spc-tog">&#9660;</span>
   </div>
   <div class="section-body" id="spc">
+    {subsection("spc-prev",    "&#x23EA;",    f"Previous Shift &mdash; {prev_shift_label}", len(sr_prev or []), spc_prev_t)}
     {subsection("spc-current", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(sr_current), spc_current_t)}
     {subsection("spc-next",    "&#x1F7E1;", f"Next Shift &mdash; {next_shift_label}", len(sr_next), spc_next_t)}
-    {subsection("spc-lr",      "&#x1F534;", "Longrunners", len(sr_lr), spc_lr_t)}
+    {subsection("spc-tbc",      "&#x1F534;", "To be checked", len(sr_lr), spc_lr_t)}
     {subsection("spc-updated", "&#x1F504;", f"Tickets Updated on Former Shift &mdash; {shift_label}", len(sr_updated), spc_updated_t)}
   </div>
 </div>
@@ -518,11 +538,14 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p4',this)">P4</button>
       <button class="filter-btn show-hidden-btn" data-tbl="spc-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
-      <button class="filter-btn toggle-covered-btn" data-tbl="spc-all-tbl" data-hiding="0" onclick="toggleCovered(this)">Show only uncovered (0)</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="spc-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
-    <div id="spc-all-tbl">{spc_all_t}</div>
+    <div id="spc-all-tbl" class="hide-covered">{spc_all_t}</div>
   </div>
 </div>
+
+</div>
+<div id="tab-info" class="tab-panel">
 
 <div class="section">
   <div class="section-header" onclick="toggle('info')">
@@ -537,6 +560,8 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
            oninput="saveInfo()"></div>
     </div>
   </div>
+</div>
+
 </div>
 
 </main>
@@ -640,7 +665,7 @@ function toggleCovered(btn) {{
   else        {{ tbl.classList.remove('hide-covered'); }}
   btn.dataset.hiding = hiding ? '1' : '0';
   var uncovered = tbl.querySelectorAll('tbody tr:not(.row-covered):not(.row-hidden)').length;
-  btn.textContent = (hiding ? 'Show all' : 'Show only uncovered') + ' (' + uncovered + ' uncovered)';
+  btn.textContent = (hiding ? 'Show all' : 'Show only unassigned') + ' (' + uncovered + ' unassigned)';
   btn.classList.toggle('active', hiding);
 }}
 function _collectNotes() {{
@@ -655,7 +680,7 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-lr','spc-updated'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
@@ -666,10 +691,6 @@ function _collectNotes() {{
   return notes;
 }}
 function exportNotes() {{
-  var notes = _collectNotes();
-  var blob = new Blob([JSON.stringify(notes, null, 2)], {{type: 'application/json'}});
-  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'ho_status.json'; a.click(); URL.revokeObjectURL(a.href);
   _serverSave(true);
 }}
 function notifyTeam(btn) {{
@@ -719,21 +740,22 @@ function uploadFile(input, source) {{
     }}).catch(function(e) {{ alert('Upload error: ' + e); if (btn) {{ btn.textContent = '὎4 Upload'; btn.classList.remove('uploading'); }} }});
 }}
 function promptEmail() {{
-  var e = prompt('Enter your SAP email (tracks who uploaded data):') || 'unknown';
-  localStorage.setItem('user_email', e);
-  document.getElementById('user-email-display').textContent = e.split('@')[0] || e;
-  return e;
-}}
-function changeEmail() {{
-  var cur = localStorage.getItem('user_email') || '';
-  var e = prompt('Enter your SAP email:', cur);
-  if (e) {{ localStorage.setItem('user_email', e); document.getElementById('user-email-display').textContent = e.split('@')[0] || e; }}
+  return 'unknown';
 }}
 function toggle(id) {{
   var el = document.getElementById(id); var tog = document.getElementById(id+'-tog');
   var hidden = el.style.display === 'none';
   el.style.display = hidden ? '' : 'none';
   tog.innerHTML = hidden ? '&#9660;' : '&#9654;';
+}}
+function switchTab(id) {{
+  document.querySelectorAll('.tab-btn').forEach(function(b) {{
+    b.classList.toggle('active', b.dataset.tab === id);
+  }});
+  document.querySelectorAll('.tab-panel').forEach(function(p) {{
+    p.classList.toggle('active', p.id === 'tab-' + id);
+  }});
+  localStorage.setItem('active_tab', id);
 }}
 function filterText(cid, q) {{
   q = q.toLowerCase();
@@ -769,7 +791,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-lr','spc-updated'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;
@@ -786,7 +808,7 @@ document.addEventListener('DOMContentLoaded', function() {{
     var tbl = document.getElementById(btn.dataset.tbl);
     if (tbl) {{
       var uncovered = tbl.querySelectorAll('tbody tr:not(.row-covered):not(.row-hidden)').length;
-      btn.textContent = 'Show only uncovered (' + uncovered + ' uncovered)';
+      btn.textContent = 'Show only unassigned (' + uncovered + ' unassigned)';
     }}
   }});
   var infoVal = sharedNotes['info:notes'] || localStorage.getItem('info:notes') || '';
@@ -795,8 +817,9 @@ document.addEventListener('DOMContentLoaded', function() {{
   if (serverUser && serverUser !== 'unknown') {{
     localStorage.setItem('user_email', serverUser);
   }}
-  var em = localStorage.getItem('user_email') || '—';
+  var em = serverUser || '—';
   document.getElementById('user-email-display').textContent = em === '—' ? '—' : (em.split('@')[0] || em);
+  switchTab(localStorage.getItem('active_tab') || 'spc');
 }});
 </script>
 </body>
