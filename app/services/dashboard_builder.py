@@ -122,7 +122,8 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             cov_label = coverage_map.get(ticket_key, "") if ticket_key else ""
             if cov_label:
                 _cov_cls = {"Current Shift": "cov-current", "Next Shift": "cov-next",
-                            "Longrunner": "cov-lr", "Updated": "cov-updated"}.get(cov_label, "")
+                            "Longrunner": "cov-lr", "Updated": "cov-updated",
+                            "Previous Shift": "cov-prev"}.get(cov_label, "")
                 cov_cell = f'<span class="cov-badge {_cov_cls}">{cov_label}</span>'
             else:
                 cov_cell = '<span class="cov-none">—</span>'
@@ -130,6 +131,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             tds.append(
                 f'<td><select class="move-select" data-ticket="{ticket_key}" onchange="moveTicket(this)">'
                 f'<option value="">— auto —</option>'
+                f'<option value="spc-prev">Previous Shift</option>'
                 f'<option value="spc-current">Current Shift</option>'
                 f'<option value="spc-next">Next Shift</option>'
                 f'<option value="spc-lr">Longrunners</option>'
@@ -178,7 +180,7 @@ def _fresh_bar_item(source_key, label, source_meta):
 
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
-               source_meta=None, current_user="", ho_updated_at=""):
+               source_meta=None, current_user="", ho_updated_at="", sr_prev=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
@@ -247,6 +249,11 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         editable_col="HO Status", section_id="spc-next", longrunner=True,
         sort_key_fn=spc_subj_sort, hideable=True)
+    spc_prev_t = render_table(sh, sr_prev or [], spc_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
+        rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
+        editable_col="HO Status", section_id="spc-prev", longrunner=True,
+        sort_key_fn=spc_subj_sort, hideable=True)
     spc_lr_t = render_table(sh, sr_lr, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
@@ -271,6 +278,9 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     for _r in sr_updated:
         _tid = _r[spc_link_idx] if spc_link_idx < len(_r) else ""
         if _tid and _tid not in coverage: coverage[_tid] = "Updated"
+    for _r in (sr_prev or []):
+        _tid = _r[spc_link_idx] if spc_link_idx < len(_r) else ""
+        if _tid and _tid not in coverage: coverage[_tid] = "Previous Shift"
     spc_all_t = render_table(sh, sr_all_raw, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
@@ -440,6 +450,7 @@ tr.row-hidden{{opacity:.5;background:repeating-linear-gradient(135deg,transparen
 .cov-next{{background:rgba(250,219,20,.20);color:#c8a800}}
 .cov-lr{{background:rgba(255,77,79,.20);color:#ff4d4f}}
 .cov-updated{{background:rgba(79,142,247,.20);color:#4f8ef7}}
+.cov-prev{{background:rgba(147,112,219,.20);color:#9370db}}
 .cov-none{{color:var(--muted)}}
 .move-th{{width:120px}}
 .move-select{{font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;width:100%}}
@@ -518,6 +529,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <span class="toggle" id="spc-tog">&#9660;</span>
   </div>
   <div class="section-body" id="spc">
+    {subsection("spc-prev",    "&#x23EA;",    f"Previous Shift &mdash; {prev_shift_label}", len(sr_prev or []), spc_prev_t)}
     {subsection("spc-current", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(sr_current), spc_current_t)}
     {subsection("spc-next",    "&#x1F7E1;", f"Next Shift &mdash; {next_shift_label}", len(sr_next), spc_next_t)}
     {subsection("spc-lr",      "&#x1F534;", "Longrunners", len(sr_lr), spc_lr_t)}
@@ -683,7 +695,7 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-lr','spc-updated'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-lr','spc-updated','spc-prev'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
@@ -806,7 +818,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-lr','spc-updated'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-lr','spc-updated','spc-prev'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;

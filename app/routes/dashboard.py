@@ -59,11 +59,14 @@ def index():
     lr_flagged   = get_flagged_ids(ho_status, "spc-lr")
     hide_current = get_flagged_ids(ho_status, "spc-current")
     hide_next    = get_flagged_ids(ho_status, "spc-next")
+    hide_prev    = get_flagged_ids(ho_status, "spc-prev")
 
     sr_current = filter_spc_by_shift(sr_all_raw, s_subj_idx, shift_start, shift_end,
                                       s_link_idx, hide_current)
     sr_next    = filter_spc_by_shift(sr_all_raw, s_subj_idx, next_start, next_end,
                                       s_link_idx, hide_next)
+    sr_prev    = filter_spc_by_shift(sr_all_raw, s_subj_idx, prev_start, prev_end,
+                                      s_link_idx, hide_prev)
     sr_lr      = filter_spc_longrunners(sr_all_raw, s_link_idx, lr_flagged)
 
     scheduled_ids = {r[s_link_idx] for r in sr_current + sr_next
@@ -77,6 +80,7 @@ def index():
     sr_next    = apply_section_override(sr_next,    sr_all_raw, s_link_idx, overrides["spc-next"])
     sr_lr      = apply_section_override(sr_lr,      sr_all_raw, s_link_idx, overrides["spc-lr"])
     sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"])
+    sr_prev    = apply_section_override(sr_prev,    sr_all_raw, s_link_idx, overrides["spc-prev"])
 
     current_user = get_user_from_request(request)
     ho_updated_at = get_store().get_ho_updated_at()
@@ -91,5 +95,6 @@ def index():
         source_meta=source_meta,
         current_user=current_user,
         ho_updated_at=ho_updated_at,
+        sr_prev=sr_prev,
     )
     return Response(html, mimetype="text/html")
