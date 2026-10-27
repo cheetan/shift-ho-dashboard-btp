@@ -600,7 +600,16 @@ function saveHO(el) {{
 function saveLR(el) {{
   if (el.checked) localStorage.setItem(el.dataset.key, '1');
   else            localStorage.removeItem(el.dataset.key);
-  _scheduleAutoSave();
+  var notes = _collectNotes();
+  var email = localStorage.getItem('user_email') || 'unknown';
+  fetch('/api/export-notes', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
+    body: JSON.stringify(notes)
+  }}).then(function(r) {{
+    if (r.ok) location.reload();
+    else showSaveError(r.status);
+  }}).catch(function(e) {{ showSaveError(0); }});
 }}
 function moveTicket(sel) {{
   _scheduleAutoSave();
