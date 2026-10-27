@@ -198,7 +198,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     ipc  = count_by_priority(ir, i_pri)
     spc_c = count_by_priority(sr_all, s_pri)
 
-    sched_activities = len(sr_current) + len(sr_next)
+    sched_activities = len(sr_current) + len(sr_prev or [])
 
     snow_url    = "https://itsm.services.sap//workspace_redirect.do?sysparm_number={}"
     snow_rename = {"Install Base Item": "SIDCID", "Number": "Ticket ID",
