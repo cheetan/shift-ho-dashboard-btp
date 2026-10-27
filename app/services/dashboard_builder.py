@@ -626,7 +626,12 @@ function _serverSave(showIndicator) {{
     headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
     body: JSON.stringify(notes)
   }}).then(function(r) {{
-    if (r.ok) {{ if (showIndicator) showSaved(); }}
+    if (r.ok) {{
+      if (showIndicator) showSaved();
+      fetch('/api/status').then(function(s) {{ return s.json(); }}).then(function(latest) {{
+        Object.keys(latest).forEach(function(k) {{ known[k] = latest[k]; }});
+      }}).catch(function() {{}});
+    }}
     else {{ console.warn('Server save failed: HTTP ' + r.status); showSaveError(r.status); }}
   }}).catch(function(e) {{ console.warn('Auto-save error:', e); showSaveError(0); }});
 }}
