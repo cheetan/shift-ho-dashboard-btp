@@ -489,10 +489,6 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 {fresh_bar}
 </div>
 
-<div class="ho-bar">
-  <div class="ho-pill {'hi' if sched_activities else ''}"><strong>{sched_activities}</strong>&#x1F4C5; Scheduled Activities</div>
-</div>
-
 <div class="stats">
   {stat_tile("Snow Cases",  len(cr), cpc)}
   {stat_tile("Snow Alerts", len(ar), apc)}
@@ -518,6 +514,10 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 {section("inc",    "&#x1F6A8;",        "Snow Internal INCs",  len(ir), inc_t,   subtitle=shift_label)}
 </div>
 <div id="tab-spc" class="tab-panel">
+
+<div class="ho-bar">
+  <div class="ho-pill {'hi' if sched_activities else ''}"><strong>{sched_activities}</strong>&#x1F4C5; Scheduled Activities</div>
+</div>
 
 <div class="section">
   <div class="section-header" onclick="toggle('spc')">
