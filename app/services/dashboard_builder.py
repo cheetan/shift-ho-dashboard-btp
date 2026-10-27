@@ -51,7 +51,7 @@ def reformat_date_dmy(val):
 
 def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=None,
                  link_url=None, col_format=None, sort_col=None, sort_desc=False,
-                 editable_col=None, section_id="", longrunner=False, link_cols=None,
+                 editable_col=None, section_id="", longrunner=False, lr_section_id=None, link_cols=None,
                  sort_key_fn=None, hideable=False, coverage_map=None):
     rename     = rename or {}
     col_format = col_format or {}
@@ -113,7 +113,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             hide_td = ""
 
         if longrunner:
-            lr_key = f"lr:{section_id}:{ticket_key}"
+            lr_key = f"lr:{lr_section_id or section_id}:{ticket_key}"
             tds.append(f'<td class="lr-td"><input type="checkbox" class="lr-flag" data-key="{lr_key}" onchange="saveLR(this)"></td>')
         if editable_col:
             ho_key = f"ho:{section_id}:{ticket_key}"
@@ -239,17 +239,17 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     spc_current_t = render_table(sh, sr_current, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-current", longrunner=True,
+        editable_col="HO Status", section_id="spc-current", longrunner=True, lr_section_id="spc-tbc",
         sort_key_fn=spc_subj_sort, hideable=True)
     spc_next_t = render_table(sh, sr_next, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-next", longrunner=True,
+        editable_col="HO Status", section_id="spc-next", longrunner=True, lr_section_id="spc-tbc",
         sort_key_fn=spc_subj_sort, hideable=True)
     spc_prev_t = render_table(sh, sr_prev or [], spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-prev", longrunner=True,
+        editable_col="HO Status", section_id="spc-prev", longrunner=True, lr_section_id="spc-tbc",
         sort_key_fn=spc_subj_sort, hideable=True)
     spc_lr_t = render_table(sh, sr_lr, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
@@ -259,7 +259,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         sort_col="Last Changed At", sort_desc=True,
-        editable_col="HO Status", section_id="spc-updated", longrunner=True, hideable=True)
+        editable_col="HO Status", section_id="spc-updated", longrunner=True, lr_section_id="spc-tbc", hideable=True)
 
     spc_link_idx = safe_col(sh, "Ticket ID")
     coverage = {}
