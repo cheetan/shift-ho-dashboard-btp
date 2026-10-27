@@ -73,7 +73,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
         return '<p class="empty">No tickets found.</p>'
 
     hide_th = '<th class="hide-th"></th>'          if hideable          else ""
-    lr_th   = '<th class="lr-th">Longrunner</th>'  if longrunner        else ""
+    lr_th   = '<th class="lr-th">To be checked</th>'  if longrunner        else ""
     extra_th = f'<th>{editable_col}</th>'           if editable_col      else ""
     cov_th  = '<th class="cov-th">Coverage</th>'   if coverage_map is not None else ""
     move_th = '<th class="move-th">Move to</th>'   if coverage_map is not None else ""
@@ -122,7 +122,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             cov_label = coverage_map.get(ticket_key, "") if ticket_key else ""
             if cov_label:
                 _cov_cls = {"Current Shift": "cov-current", "Next Shift": "cov-next",
-                            "Longrunner": "cov-lr", "Updated": "cov-updated",
+                            "To be checked": "cov-tbc", "Updated": "cov-updated",
                             "Previous Shift": "cov-prev"}.get(cov_label, "")
                 cov_cell = f'<span class="cov-badge {_cov_cls}">{cov_label}</span>'
             else:
@@ -134,7 +134,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
                 f'<option value="spc-prev">Previous Shift</option>'
                 f'<option value="spc-current">Current Shift</option>'
                 f'<option value="spc-next">Next Shift</option>'
-                f'<option value="spc-lr">Longrunners</option>'
+                f'<option value="spc-tbc">To be checked</option>'
                 f'<option value="spc-updated">Updated</option>'
                 f'</select></td>'
             )
@@ -257,7 +257,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     spc_lr_t = render_table(sh, sr_lr, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-lr", longrunner=True, hideable=True)
+        editable_col="HO Status", section_id="spc-tbc", longrunner=True, hideable=True)
     spc_updated_t = render_table(sh, sr_updated, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
@@ -274,7 +274,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         if _tid and _tid not in coverage: coverage[_tid] = "Next Shift"
     for _r in sr_lr:
         _tid = _r[spc_link_idx] if spc_link_idx < len(_r) else ""
-        if _tid and _tid not in coverage: coverage[_tid] = "Longrunner"
+        if _tid and _tid not in coverage: coverage[_tid] = "To be checked"
     for _r in sr_updated:
         _tid = _r[spc_link_idx] if spc_link_idx < len(_r) else ""
         if _tid and _tid not in coverage: coverage[_tid] = "Updated"
@@ -448,7 +448,7 @@ tr.row-hidden{{opacity:.5;background:repeating-linear-gradient(135deg,transparen
 .cov-badge{{display:inline-block;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap}}
 .cov-current{{background:rgba(82,196,26,.20);color:#52c41a}}
 .cov-next{{background:rgba(250,219,20,.20);color:#c8a800}}
-.cov-lr{{background:rgba(255,77,79,.20);color:#ff4d4f}}
+.cov-tbc{{background:rgba(255,77,79,.20);color:#ff4d4f}}
 .cov-updated{{background:rgba(79,142,247,.20);color:#4f8ef7}}
 .cov-prev{{background:rgba(147,112,219,.20);color:#9370db}}
 .cov-none{{color:var(--muted)}}
@@ -532,7 +532,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     {subsection("spc-prev",    "&#x23EA;",    f"Previous Shift &mdash; {prev_shift_label}", len(sr_prev or []), spc_prev_t)}
     {subsection("spc-current", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(sr_current), spc_current_t)}
     {subsection("spc-next",    "&#x1F7E1;", f"Next Shift &mdash; {next_shift_label}", len(sr_next), spc_next_t)}
-    {subsection("spc-lr",      "&#x1F534;", "Longrunners", len(sr_lr), spc_lr_t)}
+    {subsection("spc-tbc",      "&#x1F534;", "To be checked", len(sr_lr), spc_lr_t)}
     {subsection("spc-updated", "&#x1F504;", f"Tickets Updated on Former Shift &mdash; {shift_label}", len(sr_updated), spc_updated_t)}
   </div>
 </div>
@@ -695,7 +695,7 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-lr','spc-updated','spc-prev'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
@@ -818,7 +818,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-lr','spc-updated','spc-prev'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;

@@ -56,7 +56,7 @@ def index():
                                         get_flagged_ids(ho_status, "inc"))
 
     # SPC sub-sections
-    lr_flagged   = get_flagged_ids(ho_status, "spc-lr")
+    lr_flagged   = get_flagged_ids(ho_status, "spc-tbc")
     hide_current = get_flagged_ids(ho_status, "spc-current")
     hide_next    = get_flagged_ids(ho_status, "spc-next")
     hide_prev    = get_flagged_ids(ho_status, "spc-prev")
@@ -78,7 +78,7 @@ def index():
     overrides = get_section_overrides(ho_status)
     sr_current = apply_section_override(sr_current, sr_all_raw, s_link_idx, overrides["spc-current"])
     sr_next    = apply_section_override(sr_next,    sr_all_raw, s_link_idx, overrides["spc-next"])
-    sr_lr      = apply_section_override(sr_lr,      sr_all_raw, s_link_idx, overrides["spc-lr"])
+    sr_lr      = apply_section_override(sr_lr,      sr_all_raw, s_link_idx, overrides["spc-tbc"])
     sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"])
     sr_prev    = apply_section_override(sr_prev,    sr_all_raw, s_link_idx, overrides["spc-prev"])
 
