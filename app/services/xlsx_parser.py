@@ -176,7 +176,7 @@ def get_flagged_ids(ho_status, section_id):
 
 
 def get_section_overrides(ho_status: dict) -> dict:
-    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set()}
+    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set(), "cases-active": set()}
     for key, val in ho_status.items():
         if key.startswith("move:") and str(val) == "1":
             parts = key.split(":", 2)
@@ -201,6 +201,17 @@ def filter_snow_by_shift(rows, updated_col_idx, start_str, end_str, link_col_idx
         ticket = row[link_col_idx] if link_col_idx < len(row) else ""
         val    = row[updated_col_idx] if updated_col_idx < len(row) else ""
         if ticket in flagged or (val and start_str <= val < end_str):
+            out.append(row)
+    return out
+
+
+def filter_snow_by_status(rows, state_col_idx, states, link_col_idx, flagged):
+    states_lower = {s.lower() for s in states}
+    out = []
+    for row in rows:
+        ticket = row[link_col_idx] if link_col_idx < len(row) else ""
+        state  = (row[state_col_idx] if state_col_idx < len(row) else "").lower()
+        if ticket in flagged or state in states_lower:
             out.append(row)
     return out
 

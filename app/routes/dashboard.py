@@ -3,7 +3,7 @@ from flask import Blueprint, Response, request
 from app.store import get_store
 from app.services.shift import detect_shift, get_shift_window, get_next_shift_window, get_previous_shift_window
 from app.services.xlsx_parser import (
-    safe_col, filter_snow_by_shift, filter_spc_by_shift,
+    safe_col, filter_snow_by_shift, filter_snow_by_status, filter_spc_by_shift,
     filter_spc_longrunners, filter_spc_by_last_changed, get_flagged_ids,
     get_section_overrides, apply_section_override,
 )
@@ -55,6 +55,14 @@ def index():
     ir_filtered = filter_snow_by_shift(ir, i_updated_idx, shift_start, shift_end, i_link_idx,
                                         get_flagged_ids(ho_status, "inc"))
 
+    overrides = get_section_overrides(ho_status)
+
+    # Active Cases subsection
+    c_state_idx = safe_col(ch, "State")
+    cr_active   = filter_snow_by_status(cr_filtered, c_state_idx, {"New", "In Progress"},
+                                        c_link_idx, set())
+    cr_active   = apply_section_override(cr_active, cr_filtered, c_link_idx, overrides["cases-active"])
+
     # SPC sub-sections
     lr_flagged   = get_flagged_ids(ho_status, "spc-tbc")
     hide_current = get_flagged_ids(ho_status, "spc-current")
@@ -75,7 +83,6 @@ def index():
     sr_updated = filter_spc_by_last_changed(sr_all_raw, s_lc_idx, prev_start, prev_end,
                                              s_link_idx, set(), exclude_ids=scheduled_ids)
 
-    overrides = get_section_overrides(ho_status)
     sr_current = apply_section_override(sr_current, sr_all_raw, s_link_idx, overrides["spc-current"])
     sr_next    = apply_section_override(sr_next,    sr_all_raw, s_link_idx, overrides["spc-next"])
     sr_lr      = apply_section_override(sr_lr,      sr_all_raw, s_link_idx, overrides["spc-tbc"])
@@ -96,5 +103,6 @@ def index():
         current_user=current_user,
         ho_updated_at=ho_updated_at,
         sr_prev=sr_prev,
+        cr_active=cr_active,
     )
     return Response(html, mimetype="text/html")

@@ -52,7 +52,7 @@ def reformat_date_dmy(val):
 def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=None,
                  link_url=None, col_format=None, sort_col=None, sort_desc=False,
                  editable_col=None, section_id="", longrunner=False, lr_section_id=None, link_cols=None,
-                 sort_key_fn=None, hideable=False, coverage_map=None):
+                 sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None):
     rename     = rename or {}
     col_format = col_format or {}
     link_cols  = link_cols or {}
@@ -123,7 +123,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             if cov_label:
                 _cov_cls = {"Current Shift": "cov-current", "Next Shift": "cov-next",
                             "To be checked": "cov-tbc", "Updated": "cov-updated",
-                            "Previous Shift": "cov-prev"}.get(cov_label, "")
+                            "Previous Shift": "cov-prev", "Active Cases": "cov-active"}.get(cov_label, "")
                 cov_cell = f'<span class="cov-badge {_cov_cls}">{cov_label}</span>'
             else:
                 cov_cell = '<span class="cov-none">—</span>'
@@ -131,12 +131,14 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             tds.append(
                 f'<td><select class="move-select" data-ticket="{ticket_key}" onchange="moveTicket(this)">'
                 f'<option value="">— auto —</option>'
-                f'<option value="spc-prev">Previous Shift</option>'
-                f'<option value="spc-current">Current Shift</option>'
-                f'<option value="spc-next">Next Shift</option>'
-                f'<option value="spc-tbc">To be checked</option>'
-                f'<option value="spc-updated">Updated</option>'
-                f'</select></td>'
+                + "".join(
+                    f'<option value="{v}">{l}</option>'
+                    for v, l in (move_sections or [
+                        ("spc-prev","Previous Shift"),("spc-current","Current Shift"),
+                        ("spc-next","Next Shift"),("spc-tbc","To be checked"),("spc-updated","Updated"),
+                    ])
+                )
+                + f'</select></td>'
             )
 
         row_covered_cls = " row-covered" if (coverage_map is not None and ticket_key and ticket_key in coverage_map) else ""
@@ -177,7 +179,7 @@ def source_card(source_key, label, pcounts, source_meta):
 
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
-               source_meta=None, current_user="", ho_updated_at="", sr_prev=None):
+               source_meta=None, current_user="", ho_updated_at="", sr_prev=None, cr_active=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
@@ -208,12 +210,26 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="alerts", longrunner=True, hideable=True)
 
-    case_t = render_table(
-        ch, cr,
-        [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Updated"] if c in ch],
+    cases_link_idx = safe_col(ch, "Number")
+    cases_coverage = {}
+    for _r in cr_active or []:
+        _tid = _r[cases_link_idx] if cases_link_idx < len(_r) else ""
+        if _tid: cases_coverage[_tid] = "Active Cases"
+
+    _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Updated"] if c in ch]
+    case_active_t = render_table(
+        ch, cr_active or [], _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="cases", longrunner=True, hideable=True)
+        editable_col="HO Status", section_id="cases-active", hideable=True)
+
+    case_all_t = render_table(
+        ch, cr, _case_cols,
+        pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
+        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        editable_col="HO Status", section_id="cases-all", hideable=True,
+        coverage_map=cases_coverage,
+        move_sections=[("cases-active", "Active Cases")])
 
     inc_t = render_table(
         ih, ir,
@@ -443,6 +459,7 @@ tr.row-hidden{{opacity:.5;background:repeating-linear-gradient(135deg,transparen
 .cov-tbc{{background:rgba(255,77,79,.20);color:#ff4d4f}}
 .cov-updated{{background:rgba(79,142,247,.20);color:#4f8ef7}}
 .cov-prev{{background:rgba(147,112,219,.20);color:#9370db}}
+.cov-active{{background:rgba(52,199,89,.20);color:#34c759}}
 .cov-none{{color:var(--muted)}}
 .move-th{{width:120px}}
 .move-select{{font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;width:100%}}
@@ -491,7 +508,38 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </div>
 
 <div id="tab-cases" class="tab-panel">
-{section("cases",  "&#x1F4CB;",        "Snow Cases",          len(cr), case_t,  subtitle=shift_label)}
+<div class="section">
+  <div class="section-header" onclick="toggle('cases')">
+    <span class="icon">&#x1F4CB;</span>
+    <h2>Snow Cases</h2><span class="section-sub">{shift_label}</span>
+    <span class="count">{len(cr)}</span>
+    <span class="toggle" id="cases-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="cases">
+{subsection("cases-active", "&#x1F7E2;", "Active Cases", len(cr_active or []), case_active_t)}
+<div class="section">
+  <div class="section-header" onclick="toggle('cases-all')">
+    <span class="icon">&#x1F4CB;</span>
+    <h2>All Cases</h2>
+    <span class="section-sub">All shift cases &mdash; {len(cr)} tickets</span>
+    <span class="count">{len(cr)}</span>
+    <span class="toggle" id="cases-all-tog">&#9654;</span>
+  </div>
+  <div class="section-body" id="cases-all" style="display:none">
+    <div class="filter-bar">
+      <input type="text" placeholder="Filter&hellip;" oninput="filterText('cases-all-tbl', this.value)">
+      <button class="filter-btn" onclick="filterPri('cases-all-tbl','p1',this)">P1</button>
+      <button class="filter-btn" onclick="filterPri('cases-all-tbl','p2',this)">P2</button>
+      <button class="filter-btn" onclick="filterPri('cases-all-tbl','p3',this)">P3</button>
+      <button class="filter-btn" onclick="filterPri('cases-all-tbl','p4',this)">P4</button>
+      <button class="filter-btn show-hidden-btn" data-tbl="cases-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="cases-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
+    </div>
+    <div id="cases-all-tbl" class="hide-covered">{case_all_t}</div>
+  </div>
+</div>
+  </div>
+</div>
 </div>
 <div id="tab-alerts" class="tab-panel">
 {section("alerts", "&#x26A0;&#xFE0F;", "Snow Alerts",         len(ar), alert_t, subtitle=shift_label)}
@@ -698,7 +746,7 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
@@ -809,7 +857,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;
