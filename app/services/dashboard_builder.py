@@ -448,6 +448,14 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 .hide-covered tr.row-covered{{display:none}}
 .save-indicator{{position:fixed;bottom:24px;right:24px;background:#1a2e1a;border:2px solid #52c41a;color:#52c41a;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 4px 20px rgba(82,196,26,.35);letter-spacing:.02em;z-index:9999}}
 .save-indicator.show{{opacity:1;transform:translateY(0)}}
+.tab-bar{{display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)}}
+.tab-btn{{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--muted);padding:10px 20px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:-2px;border-radius:6px 6px 0 0;font-family:var(--font);white-space:nowrap}}
+.tab-btn:hover{{color:var(--text)}}
+.tab-btn.active{{color:var(--accent);border-bottom-color:var(--accent)}}
+.tab-count{{background:var(--border);border-radius:10px;padding:1px 7px;font-size:11px;color:var(--muted)}}
+.tab-btn.active .tab-count{{background:rgba(79,142,247,.2);color:var(--accent)}}
+.tab-panel{{display:none}}
+.tab-panel.active{{display:block}}
 </style>
 </head>
 <body>
@@ -482,9 +490,24 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   {stat_tile("SPC Tickets Updated Former Shift", len(sr_updated), spc_c)}
 </div>
 
+<div class="tab-bar">
+  <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_all)}</span></button>
+  <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
+  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Cases <span class="tab-count">{len(cr)}</span></button>
+  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Alerts <span class="tab-count">{len(ar)}</span></button>
+  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; INCs <span class="tab-count">{len(ir)}</span></button>
+</div>
+
+<div id="tab-cases" class="tab-panel">
 {section("cases",  "&#x1F4CB;",        "Snow Cases",          len(cr), case_t,  subtitle=shift_label)}
+</div>
+<div id="tab-alerts" class="tab-panel">
 {section("alerts", "&#x26A0;&#xFE0F;", "Snow Alerts",         len(ar), alert_t, subtitle=shift_label)}
+</div>
+<div id="tab-inc" class="tab-panel">
 {section("inc",    "&#x1F6A8;",        "Snow Internal INCs",  len(ir), inc_t,   subtitle=shift_label)}
+</div>
+<div id="tab-spc" class="tab-panel">
 
 <div class="section">
   <div class="section-header" onclick="toggle('spc')">
@@ -524,6 +547,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   </div>
 </div>
 
+</div>
+<div id="tab-info" class="tab-panel">
+
 <div class="section">
   <div class="section-header" onclick="toggle('info')">
     <span class="icon">&#x2139;&#xFE0F;</span>
@@ -537,6 +563,8 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
            oninput="saveInfo()"></div>
     </div>
   </div>
+</div>
+
 </div>
 
 </main>
@@ -735,6 +763,15 @@ function toggle(id) {{
   el.style.display = hidden ? '' : 'none';
   tog.innerHTML = hidden ? '&#9660;' : '&#9654;';
 }}
+function switchTab(id) {{
+  document.querySelectorAll('.tab-btn').forEach(function(b) {{
+    b.classList.toggle('active', b.dataset.tab === id);
+  }});
+  document.querySelectorAll('.tab-panel').forEach(function(p) {{
+    p.classList.toggle('active', p.id === 'tab-' + id);
+  }});
+  localStorage.setItem('active_tab', id);
+}}
 function filterText(cid, q) {{
   q = q.toLowerCase();
   document.getElementById(cid).querySelectorAll('tbody tr').forEach(function(r) {{
@@ -797,6 +834,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   }}
   var em = localStorage.getItem('user_email') || '—';
   document.getElementById('user-email-display').textContent = em === '—' ? '—' : (em.split('@')[0] || em);
+  switchTab(localStorage.getItem('active_tab') || 'spc');
 }});
 </script>
 </body>
