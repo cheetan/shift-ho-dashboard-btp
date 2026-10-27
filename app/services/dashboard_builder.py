@@ -282,10 +282,10 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         coverage_map=coverage)
 
     cards = (
+        source_card("spc",        "SPC Report",         len(sr_updated), spc_c, source_meta) +
         source_card("snow_case",  "Snow Cases",         len(cr),         cpc,  source_meta) +
         source_card("snow_alert", "Snow Alerts",        len(ar),         apc,  source_meta) +
-        source_card("snow_inc",   "Snow Internal INCs", len(ir),         ipc,  source_meta) +
-        source_card("spc",        "SPC Report",         len(sr_updated), spc_c, source_meta)
+        source_card("snow_inc",   "Snow Internal INCs", len(ir),         ipc,  source_meta)
     )
 
     def section(sid, icon, title, count, table_html, subtitle=""):
