@@ -259,7 +259,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         sort_col="Last Changed At", sort_desc=True,
-        editable_col="HO Status", section_id="spc-updated", longrunner=True, lr_section_id="spc-tbc", hideable=True)
+        editable_col="HO Status", section_id="spc-updated", longrunner=False, hideable=True)
 
     spc_link_idx = safe_col(sh, "Ticket ID")
     coverage = {}
