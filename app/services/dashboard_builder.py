@@ -257,7 +257,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     spc_lr_t = render_table(sh, sr_lr, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-tbc", longrunner=True, hideable=True)
+        editable_col="HO Status", section_id="spc-tbc", longrunner=False, hideable=True)
     spc_updated_t = render_table(sh, sr_updated, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
