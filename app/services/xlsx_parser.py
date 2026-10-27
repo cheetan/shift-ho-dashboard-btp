@@ -227,14 +227,15 @@ def filter_snow_by_status(rows, state_col_idx, states, link_col_idx, flagged, ex
     return out
 
 
-def filter_spc_by_shift(rows, subject_col_idx, start_str, end_str, link_col_idx, flagged):
+def filter_spc_by_shift(rows, subject_col_idx, start_str, end_str, link_col_idx, flagged, excluded=None):
+    excluded = excluded or set()
     start_dt = datetime.strptime(start_str, "%Y-%m-%d %H:%M").replace(tzinfo=EET)
     end_dt   = datetime.strptime(end_str,   "%Y-%m-%d %H:%M").replace(tzinfo=EET) if end_str else None
     out = []
     for row in rows:
         ticket  = row[link_col_idx]    if link_col_idx    < len(row) else ""
         subject = row[subject_col_idx] if subject_col_idx < len(row) else ""
-        if ticket in flagged:
+        if ticket in flagged or ticket in excluded:
             continue
         dt_utc = parse_spc_subject_dt(subject)
         if dt_utc:
@@ -244,9 +245,11 @@ def filter_spc_by_shift(rows, subject_col_idx, start_str, end_str, link_col_idx,
     return out
 
 
-def filter_spc_longrunners(rows, link_col_idx, flagged):
+def filter_spc_longrunners(rows, link_col_idx, flagged, excluded=None):
+    excluded = excluded or set()
     return [r for r in rows
-            if (r[link_col_idx] if link_col_idx < len(r) else "") in flagged]
+            if (r[link_col_idx] if link_col_idx < len(r) else "") in flagged
+            and (r[link_col_idx] if link_col_idx < len(r) else "") not in excluded]
 
 
 def filter_spc_by_last_changed(rows, lc_col_idx, shift_start_str, shift_end_str,

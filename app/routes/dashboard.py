@@ -61,6 +61,12 @@ def index():
     cr_excluded = get_excluded_ids(ho_status, "cases-active")
     ir_excluded = get_excluded_ids(ho_status, "inc-active")
 
+    sr_current_excluded = get_excluded_ids(ho_status, "spc-current")
+    sr_next_excluded    = get_excluded_ids(ho_status, "spc-next")
+    sr_prev_excluded    = get_excluded_ids(ho_status, "spc-prev")
+    sr_tbc_excluded     = get_excluded_ids(ho_status, "spc-tbc")
+    sr_updated_excluded = get_excluded_ids(ho_status, "spc-updated")
+
     # Active Alerts subsection
     a_state_idx = safe_col(ah, "State")
     ar_active   = filter_snow_by_status(ar, a_state_idx, {"New", "In Progress"}, a_link_idx, set(), excluded=ar_excluded)
@@ -83,24 +89,24 @@ def index():
     hide_prev    = get_flagged_ids(ho_status, "spc-prev")
 
     sr_current = filter_spc_by_shift(sr_all_raw, s_subj_idx, shift_start, shift_end,
-                                      s_link_idx, hide_current)
+                                      s_link_idx, hide_current, excluded=sr_current_excluded)
     sr_next    = filter_spc_by_shift(sr_all_raw, s_subj_idx, next_start, next_end,
-                                      s_link_idx, hide_next)
+                                      s_link_idx, hide_next, excluded=sr_next_excluded)
     sr_prev    = filter_spc_by_shift(sr_all_raw, s_subj_idx, prev_start, prev_end,
-                                      s_link_idx, hide_prev)
-    sr_lr      = filter_spc_longrunners(sr_all_raw, s_link_idx, lr_flagged)
+                                      s_link_idx, hide_prev, excluded=sr_prev_excluded)
+    sr_lr      = filter_spc_longrunners(sr_all_raw, s_link_idx, lr_flagged, excluded=sr_tbc_excluded)
 
     scheduled_ids = {r[s_link_idx] for r in sr_current + sr_next
                      if s_link_idx < len(r) and r[s_link_idx]}
     scheduled_ids |= lr_flagged
     sr_updated = filter_spc_by_last_changed(sr_all_raw, s_lc_idx, prev_start, prev_end,
-                                             s_link_idx, set(), exclude_ids=scheduled_ids)
+                                             s_link_idx, set(), exclude_ids=scheduled_ids | sr_updated_excluded)
 
-    sr_current = apply_section_override(sr_current, sr_all_raw, s_link_idx, overrides["spc-current"])
-    sr_next    = apply_section_override(sr_next,    sr_all_raw, s_link_idx, overrides["spc-next"])
-    sr_lr      = apply_section_override(sr_lr,      sr_all_raw, s_link_idx, overrides["spc-tbc"])
-    sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"])
-    sr_prev    = apply_section_override(sr_prev,    sr_all_raw, s_link_idx, overrides["spc-prev"])
+    sr_current = apply_section_override(sr_current, sr_all_raw, s_link_idx, overrides["spc-current"], excluded=sr_current_excluded)
+    sr_next    = apply_section_override(sr_next,    sr_all_raw, s_link_idx, overrides["spc-next"],    excluded=sr_next_excluded)
+    sr_lr      = apply_section_override(sr_lr,      sr_all_raw, s_link_idx, overrides["spc-tbc"],     excluded=sr_tbc_excluded)
+    sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"], excluded=sr_updated_excluded)
+    sr_prev    = apply_section_override(sr_prev,    sr_all_raw, s_link_idx, overrides["spc-prev"],    excluded=sr_prev_excluded)
 
     current_user = get_user_from_request(request)
     ho_updated_at = get_store().get_ho_updated_at()
