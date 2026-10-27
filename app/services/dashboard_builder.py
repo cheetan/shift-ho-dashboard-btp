@@ -239,17 +239,17 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     spc_current_t = render_table(sh, sr_current, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-current", longrunner=True, lr_section_id="spc-tbc",
+        editable_col="HO Status", section_id="spc-current", longrunner=False,
         sort_key_fn=spc_subj_sort, hideable=True)
     spc_next_t = render_table(sh, sr_next, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-next", longrunner=True, lr_section_id="spc-tbc",
+        editable_col="HO Status", section_id="spc-next", longrunner=False,
         sort_key_fn=spc_subj_sort, hideable=True)
     spc_prev_t = render_table(sh, sr_prev or [], spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-prev", longrunner=True, lr_section_id="spc-tbc",
+        editable_col="HO Status", section_id="spc-prev", longrunner=False,
         sort_key_fn=spc_subj_sort, hideable=True)
     spc_lr_t = render_table(sh, sr_lr, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
