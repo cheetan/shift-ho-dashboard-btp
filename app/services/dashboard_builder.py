@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime, timezone
 
-from app.services.shift import parse_spc_subject_dt
+from app.services.shift import parse_spc_subject_dt, EET
 from app.services.xlsx_parser import safe_col
 
 
@@ -145,14 +145,18 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
     return f'<div class="table-wrap"><table><thead><tr>{th}</tr></thead><tbody>{"".join(tbody)}</tbody></table></div>'
 
 
-def source_card(source_key, label, total, pcounts, source_meta):
-    m        = (source_meta or {}).get(source_key, {})
-    by       = m.get("uploaded_by", "—")
-    at       = m.get("uploaded_at", "—")
-    count    = m.get("row_count", 0)
-    by_short = by.split("@")[0] if "@" in by else by
-    p1, p2   = pcounts.get(1, 0), pcounts.get(2, 0)
-    pills    = ""
+def source_card(source_key, label, pcounts, source_meta):
+    m     = (source_meta or {}).get(source_key, {})
+    by    = m.get("uploaded_by", "—")
+    at    = m.get("uploaded_at", "—")
+    count = m.get("row_count", 0)
+    try:
+        at_dt  = datetime.strptime(at[:16], "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+        at_fmt = at_dt.astimezone(EET).strftime("%d.%m.%Y %H:%M")
+    except Exception:
+        at_fmt = at
+    p1, p2 = pcounts.get(1, 0), pcounts.get(2, 0)
+    pills  = ""
     if p1: pills += f'<span class="badge p1">P1: {p1}</span>'
     if p2: pills += f'<span class="badge p2">P2: {p2}</span>'
     hi = " hi" if p1 or p2 else ""
@@ -163,9 +167,9 @@ def source_card(source_key, label, total, pcounts, source_meta):
       &#x1F4E4; Upload<input type="file" accept=".xlsx" style="display:none" onchange="uploadFile(this,'{source_key}')">
     </label>
   </div>
-  <div class="source-card-num">{total}</div>
+  <div class="source-card-num">{count}</div>
   <div class="source-card-pills">{pills or '<span class="ok">All P3/P4</span>'}</div>
-  <div class="source-card-meta">by {by_short} &middot; {at} &middot; {count} rows</div>
+  <div class="source-card-meta">XLSX uploaded by {by} on {at_fmt} EET</div>
 </div>"""
 
 
@@ -282,10 +286,10 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         coverage_map=coverage)
 
     cards = (
-        source_card("spc",        "SPC Report",         len(sr_updated), spc_c, source_meta) +
-        source_card("snow_case",  "Snow Cases",         len(cr),         cpc,  source_meta) +
-        source_card("snow_alert", "Snow Alerts",        len(ar),         apc,  source_meta) +
-        source_card("snow_inc",   "Snow Internal INCs", len(ir),         ipc,  source_meta)
+        source_card("spc",        "SPC Report",         spc_c, source_meta) +
+        source_card("snow_case",  "Snow Cases",         cpc,   source_meta) +
+        source_card("snow_alert", "Snow Alerts",        apc,   source_meta) +
+        source_card("snow_inc",   "Snow Internal INCs", ipc,   source_meta)
     )
 
     def section(sid, icon, title, count, table_html, subtitle=""):
