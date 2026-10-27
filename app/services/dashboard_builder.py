@@ -485,9 +485,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 <div class="tab-bar">
   <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_all)}</span></button>
   <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
-  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Cases <span class="tab-count">{len(cr)}</span></button>
-  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Alerts <span class="tab-count">{len(ar)}</span></button>
-  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; INCs <span class="tab-count">{len(ir)}</span></button>
+  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr)}</span></button>
+  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar)}</span></button>
+  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir)}</span></button>
 </div>
 
 <div id="tab-cases" class="tab-panel">
