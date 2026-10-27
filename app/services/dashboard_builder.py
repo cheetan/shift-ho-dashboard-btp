@@ -75,7 +75,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
     hide_th = '<th class="hide-th"></th>'          if hideable          else ""
     lr_th   = '<th class="lr-th">To be checked</th>'  if longrunner        else ""
     extra_th = f'<th>{editable_col}</th>'           if editable_col      else ""
-    cov_th  = '<th class="cov-th">Coverage</th>'   if coverage_map is not None else ""
+    cov_th  = '<th class="cov-th">Section</th>'     if coverage_map is not None else ""
     move_th = '<th class="move-th">Move to</th>'   if coverage_map is not None else ""
     th = hide_th + "".join(f"<th>{h}</th>" for h in actual) + lr_th + extra_th + cov_th + move_th
 
