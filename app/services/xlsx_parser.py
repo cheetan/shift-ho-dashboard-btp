@@ -175,8 +175,14 @@ def get_flagged_ids(ho_status, section_id):
             if k.startswith(prefix) and str(v) == "1"}
 
 
+def get_excluded_ids(ho_status, section_id):
+    prefix = f"exclude:{section_id}:"
+    return {k[len(prefix):] for k, v in ho_status.items()
+            if k.startswith(prefix) and str(v) == "1"}
+
+
 def get_section_overrides(ho_status: dict) -> dict:
-    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set()}
+    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set(), "cases-active": set(), "alerts-active": set(), "inc-active": set()}
     for key, val in ho_status.items():
         if key.startswith("move:") and str(val) == "1":
             parts = key.split(":", 2)
@@ -185,13 +191,15 @@ def get_section_overrides(ho_status: dict) -> dict:
     return overrides
 
 
-def apply_section_override(section_rows, all_rows, link_col_idx, override_ids):
+def apply_section_override(section_rows, all_rows, link_col_idx, override_ids, excluded=None):
+    excluded = excluded or set()
     if not override_ids:
         return section_rows
     existing = {r[link_col_idx] for r in section_rows if link_col_idx < len(r)}
     extras = [r for r in all_rows
               if link_col_idx < len(r) and r[link_col_idx] in override_ids
-              and r[link_col_idx] not in existing]
+              and r[link_col_idx] not in existing
+              and r[link_col_idx] not in excluded]
     return section_rows + extras
 
 
@@ -205,14 +213,29 @@ def filter_snow_by_shift(rows, updated_col_idx, start_str, end_str, link_col_idx
     return out
 
 
-def filter_spc_by_shift(rows, subject_col_idx, start_str, end_str, link_col_idx, flagged):
+def filter_snow_by_status(rows, state_col_idx, states, link_col_idx, flagged, excluded=None):
+    excluded = excluded or set()
+    states_lower = {s.lower() for s in states}
+    out = []
+    for row in rows:
+        ticket = row[link_col_idx] if link_col_idx < len(row) else ""
+        state  = (row[state_col_idx] if state_col_idx < len(row) else "").lower()
+        if ticket in excluded:
+            continue
+        if ticket in flagged or state in states_lower:
+            out.append(row)
+    return out
+
+
+def filter_spc_by_shift(rows, subject_col_idx, start_str, end_str, link_col_idx, flagged, excluded=None):
+    excluded = excluded or set()
     start_dt = datetime.strptime(start_str, "%Y-%m-%d %H:%M").replace(tzinfo=EET)
     end_dt   = datetime.strptime(end_str,   "%Y-%m-%d %H:%M").replace(tzinfo=EET) if end_str else None
     out = []
     for row in rows:
         ticket  = row[link_col_idx]    if link_col_idx    < len(row) else ""
         subject = row[subject_col_idx] if subject_col_idx < len(row) else ""
-        if ticket in flagged:
+        if ticket in flagged or ticket in excluded:
             continue
         dt_utc = parse_spc_subject_dt(subject)
         if dt_utc:
@@ -222,9 +245,11 @@ def filter_spc_by_shift(rows, subject_col_idx, start_str, end_str, link_col_idx,
     return out
 
 
-def filter_spc_longrunners(rows, link_col_idx, flagged):
+def filter_spc_longrunners(rows, link_col_idx, flagged, excluded=None):
+    excluded = excluded or set()
     return [r for r in rows
-            if (r[link_col_idx] if link_col_idx < len(r) else "") in flagged]
+            if (r[link_col_idx] if link_col_idx < len(r) else "") in flagged
+            and (r[link_col_idx] if link_col_idx < len(r) else "") not in excluded]
 
 
 def filter_spc_by_last_changed(rows, lc_col_idx, shift_start_str, shift_end_str,

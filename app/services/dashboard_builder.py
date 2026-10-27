@@ -51,8 +51,8 @@ def reformat_date_dmy(val):
 
 def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=None,
                  link_url=None, col_format=None, sort_col=None, sort_desc=False,
-                 editable_col=None, section_id="", longrunner=False, link_cols=None,
-                 sort_key_fn=None, hideable=False, coverage_map=None):
+                 editable_col=None, section_id="", longrunner=False, lr_section_id=None, link_cols=None,
+                 sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None, remove_to_all=False):
     rename     = rename or {}
     col_format = col_format or {}
     link_cols  = link_cols or {}
@@ -108,12 +108,15 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
 
         if hideable:
             hide_key = f"hide:{section_id}:{ticket_key}"
-            hide_td = f'<td class="hide-td"><button class="hide-btn" data-key="{hide_key}" onclick="hideRow(this)" title="Remove from view">&#x2715;</button></td>'
+            if remove_to_all:
+                hide_td = f'<td class="hide-td"><button class="hide-btn" data-key="{hide_key}" onclick="removeFromActive(this)" title="Send to All">&#x2715;</button></td>'
+            else:
+                hide_td = f'<td class="hide-td"><button class="hide-btn" data-key="{hide_key}" onclick="hideRow(this)" title="Remove from view">&#x2715;</button></td>'
         else:
             hide_td = ""
 
         if longrunner:
-            lr_key = f"lr:{section_id}:{ticket_key}"
+            lr_key = f"lr:{lr_section_id or section_id}:{ticket_key}"
             tds.append(f'<td class="lr-td"><input type="checkbox" class="lr-flag" data-key="{lr_key}" onchange="saveLR(this)"></td>')
         if editable_col:
             ho_key = f"ho:{section_id}:{ticket_key}"
@@ -123,7 +126,8 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             if cov_label:
                 _cov_cls = {"Current Shift": "cov-current", "Next Shift": "cov-next",
                             "To be checked": "cov-tbc", "Updated": "cov-updated",
-                            "Previous Shift": "cov-prev"}.get(cov_label, "")
+                            "Previous Shift": "cov-prev", "Active Cases": "cov-active",
+                            "Active Alerts": "cov-alerts-active", "Active INCs": "cov-inc-active"}.get(cov_label, "")
                 cov_cell = f'<span class="cov-badge {_cov_cls}">{cov_label}</span>'
             else:
                 cov_cell = '<span class="cov-none">—</span>'
@@ -131,12 +135,14 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             tds.append(
                 f'<td><select class="move-select" data-ticket="{ticket_key}" onchange="moveTicket(this)">'
                 f'<option value="">— auto —</option>'
-                f'<option value="spc-prev">Previous Shift</option>'
-                f'<option value="spc-current">Current Shift</option>'
-                f'<option value="spc-next">Next Shift</option>'
-                f'<option value="spc-tbc">To be checked</option>'
-                f'<option value="spc-updated">Updated</option>'
-                f'</select></td>'
+                + "".join(
+                    f'<option value="{v}">{l}</option>'
+                    for v, l in (move_sections or [
+                        ("spc-prev","Previous Shift"),("spc-current","Current Shift"),
+                        ("spc-next","Next Shift"),("spc-tbc","To be checked"),("spc-updated","Updated"),
+                    ])
+                )
+                + f'</select></td>'
             )
 
         row_covered_cls = " row-covered" if (coverage_map is not None and ticket_key and ticket_key in coverage_map) else ""
@@ -177,7 +183,8 @@ def source_card(source_key, label, pcounts, source_meta):
 
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
-               source_meta=None, current_user="", ho_updated_at="", sr_prev=None):
+               source_meta=None, current_user="", ho_updated_at="", sr_prev=None,
+               cr_active=None, cr_all=None, ar_active=None, ar_all=None, ir_active=None, ir_all=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
@@ -201,26 +208,68 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     snow_rename = {"Install Base Item": "SIDCID", "Number": "Ticket ID",
                    "Assigned to": "Processor", "Updated": "Last Updated EET"}
 
-    alert_t = render_table(
-        ah, ar,
-        [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Updated"] if c in ah],
-        pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
-        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="alerts", longrunner=True, hideable=True)
+    alerts_link_idx = safe_col(ah, "Number")
+    alerts_coverage = {}
+    for _r in ar_active or []:
+        _tid = _r[alerts_link_idx] if alerts_link_idx < len(_r) else ""
+        if _tid: alerts_coverage[_tid] = "Active Alerts"
 
-    case_t = render_table(
-        ch, cr,
-        [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Updated"] if c in ch],
+    _alert_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Updated"] if c in ah]
+    alert_active_t = render_table(
+        ah, ar_active or [], _alert_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="cases", longrunner=True, hideable=True)
+        editable_col="HO Status", section_id="alerts-active", hideable=True, remove_to_all=True)
 
-    inc_t = render_table(
-        ih, ir,
-        [c for c in ["Number","Priority","State","Assigned to","Short description","Subject","Install Base Item","Updated"] if c in ih],
+    alert_all_t = render_table(
+        ah, ar_all or ar, _alert_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="inc", longrunner=True, hideable=True)
+        editable_col="HO Status", section_id="alerts-all", hideable=False,
+        coverage_map=alerts_coverage,
+        move_sections=[("alerts-active", "Active Alerts")])
+
+    cases_link_idx = safe_col(ch, "Number")
+    cases_coverage = {}
+    for _r in cr_active or []:
+        _tid = _r[cases_link_idx] if cases_link_idx < len(_r) else ""
+        if _tid: cases_coverage[_tid] = "Active Cases"
+
+    _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Updated"] if c in ch]
+    case_active_t = render_table(
+        ch, cr_active or [], _case_cols,
+        pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
+        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True)
+
+    case_all_t = render_table(
+        ch, cr_all or cr, _case_cols,
+        pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
+        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        editable_col="HO Status", section_id="cases-all", hideable=False,
+        coverage_map=cases_coverage,
+        move_sections=[("cases-active", "Active Cases")])
+
+    inc_link_idx = safe_col(ih, "Number")
+    inc_coverage = {}
+    for _r in ir_active or []:
+        _tid = _r[inc_link_idx] if inc_link_idx < len(_r) else ""
+        if _tid: inc_coverage[_tid] = "Active INCs"
+
+    _inc_cols = [c for c in ["Number","Priority","State","Assigned to","Short description","Subject","Install Base Item","Updated"] if c in ih]
+    inc_active_t = render_table(
+        ih, ir_active or [], _inc_cols,
+        pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
+        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        editable_col="HO Status", section_id="inc-active", hideable=True, remove_to_all=True)
+
+    inc_all_t = render_table(
+        ih, ir_all or ir, _inc_cols,
+        pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
+        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        editable_col="HO Status", section_id="inc-all", hideable=False,
+        coverage_map=inc_coverage,
+        move_sections=[("inc-active", "Active INCs")])
 
     spc_cols = [c for c in ["Ticket ID","Ticket Type","Priority","Status","Processor","Subject",
                              "Last Changed At","Service Execution ID","Process Execution ID",
@@ -239,27 +288,27 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     spc_current_t = render_table(sh, sr_current, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-current", longrunner=True,
-        sort_key_fn=spc_subj_sort, hideable=True)
+        editable_col="HO Status", section_id="spc-current", longrunner=False,
+        sort_key_fn=spc_subj_sort, hideable=True, remove_to_all=True)
     spc_next_t = render_table(sh, sr_next, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-next", longrunner=True,
-        sort_key_fn=spc_subj_sort, hideable=True)
+        editable_col="HO Status", section_id="spc-next", longrunner=False,
+        sort_key_fn=spc_subj_sort, hideable=True, remove_to_all=True)
     spc_prev_t = render_table(sh, sr_prev or [], spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-prev", longrunner=True,
-        sort_key_fn=spc_subj_sort, hideable=True)
+        editable_col="HO Status", section_id="spc-prev", longrunner=False,
+        sort_key_fn=spc_subj_sort, hideable=True, remove_to_all=True)
     spc_lr_t = render_table(sh, sr_lr, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-tbc", longrunner=False, hideable=True)
+        editable_col="HO Status", section_id="spc-tbc", longrunner=False, hideable=True, remove_to_all=True)
     spc_updated_t = render_table(sh, sr_updated, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         sort_col="Last Changed At", sort_desc=True,
-        editable_col="HO Status", section_id="spc-updated", longrunner=True, hideable=True)
+        editable_col="HO Status", section_id="spc-updated", longrunner=False, hideable=True, remove_to_all=True)
 
     spc_link_idx = safe_col(sh, "Ticket ID")
     coverage = {}
@@ -282,7 +331,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         sort_col="Last Changed At", sort_desc=True,
-        editable_col="HO Status", section_id="spc-all", hideable=True,
+        editable_col="HO Status", section_id="spc-all", hideable=False,
         coverage_map=coverage)
 
     cards = (
@@ -443,6 +492,9 @@ tr.row-hidden{{opacity:.5;background:repeating-linear-gradient(135deg,transparen
 .cov-tbc{{background:rgba(255,77,79,.20);color:#ff4d4f}}
 .cov-updated{{background:rgba(79,142,247,.20);color:#4f8ef7}}
 .cov-prev{{background:rgba(147,112,219,.20);color:#9370db}}
+.cov-active{{background:rgba(52,199,89,.20);color:#34c759}}
+.cov-alerts-active{{background:rgba(255,149,0,.20);color:#ff9500}}
+.cov-inc-active{{background:rgba(255,59,48,.20);color:#ff3b30}}
 .cov-none{{color:var(--muted)}}
 .move-th{{width:120px}}
 .move-select{{font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;width:100%}}
@@ -485,19 +537,112 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 <div class="tab-bar">
   <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_all)}</span></button>
   <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
-  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr)}</span></button>
-  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar)}</span></button>
-  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir)}</span></button>
+  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr_all or cr)}</span></button>
+  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar_all or ar)}</span></button>
+  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir_all or ir)}</span></button>
 </div>
 
 <div id="tab-cases" class="tab-panel">
-{section("cases",  "&#x1F4CB;",        "Snow Cases",          len(cr), case_t,  subtitle=shift_label)}
+<div class="section">
+  <div class="section-header" onclick="toggle('cases')">
+    <span class="icon">&#x1F4CB;</span>
+    <h2>Snow Cases</h2><span class="section-sub">{shift_label}</span>
+    <span class="count">{len(cr_all or cr)}</span>
+    <span class="toggle" id="cases-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="cases">
+{subsection("cases-active", "&#x1F7E2;", "Active Cases", len(cr_active or []), case_active_t)}
+<div class="section">
+  <div class="section-header" onclick="toggle('cases-all')">
+    <span class="icon">&#x1F4CB;</span>
+    <h2>All Cases</h2>
+    <span class="section-sub">All shift cases &mdash; {len(cr_all or cr)} tickets</span>
+    <span class="count">{len(cr_all or cr)}</span>
+    <span class="toggle" id="cases-all-tog">&#9654;</span>
+  </div>
+  <div class="section-body" id="cases-all" style="display:none">
+    <div class="filter-bar">
+      <input type="text" placeholder="Filter&hellip;" oninput="filterText('cases-all-tbl', this.value)">
+      <button class="filter-btn" onclick="filterPri('cases-all-tbl','p1',this)">P1</button>
+      <button class="filter-btn" onclick="filterPri('cases-all-tbl','p2',this)">P2</button>
+      <button class="filter-btn" onclick="filterPri('cases-all-tbl','p3',this)">P3</button>
+      <button class="filter-btn" onclick="filterPri('cases-all-tbl','p4',this)">P4</button>
+      <button class="filter-btn show-hidden-btn" data-tbl="cases-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="cases-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
+    </div>
+    <div id="cases-all-tbl" class="hide-covered">{case_all_t}</div>
+  </div>
+</div>
+  </div>
+</div>
 </div>
 <div id="tab-alerts" class="tab-panel">
-{section("alerts", "&#x26A0;&#xFE0F;", "Snow Alerts",         len(ar), alert_t, subtitle=shift_label)}
+<div class="section">
+  <div class="section-header" onclick="toggle('alerts')">
+    <span class="icon">&#x26A0;&#xFE0F;</span>
+    <h2>Snow Alerts</h2><span class="section-sub">{shift_label}</span>
+    <span class="count">{len(ar_all or ar)}</span>
+    <span class="toggle" id="alerts-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="alerts">
+{subsection("alerts-active", "&#x1F7E2;", "Active Alerts", len(ar_active or []), alert_active_t)}
+<div class="section">
+  <div class="section-header" onclick="toggle('alerts-all')">
+    <span class="icon">&#x26A0;&#xFE0F;</span>
+    <h2>All Alerts</h2>
+    <span class="section-sub">All shift alerts &mdash; {len(ar_all or ar)} tickets</span>
+    <span class="count">{len(ar_all or ar)}</span>
+    <span class="toggle" id="alerts-all-tog">&#9654;</span>
+  </div>
+  <div class="section-body" id="alerts-all" style="display:none">
+    <div class="filter-bar">
+      <input type="text" placeholder="Filter&hellip;" oninput="filterText('alerts-all-tbl', this.value)">
+      <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p1',this)">P1</button>
+      <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p2',this)">P2</button>
+      <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p3',this)">P3</button>
+      <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p4',this)">P4</button>
+      <button class="filter-btn show-hidden-btn" data-tbl="alerts-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="alerts-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
+    </div>
+    <div id="alerts-all-tbl" class="hide-covered">{alert_all_t}</div>
+  </div>
+</div>
+  </div>
+</div>
 </div>
 <div id="tab-inc" class="tab-panel">
-{section("inc",    "&#x1F6A8;",        "Snow Internal INCs",  len(ir), inc_t,   subtitle=shift_label)}
+<div class="section">
+  <div class="section-header" onclick="toggle('inc')">
+    <span class="icon">&#x1F6A8;</span>
+    <h2>Snow Internal INCs</h2><span class="section-sub">{shift_label}</span>
+    <span class="count">{len(ir_all or ir)}</span>
+    <span class="toggle" id="inc-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="inc">
+{subsection("inc-active", "&#x1F7E2;", "Active INCs", len(ir_active or []), inc_active_t)}
+<div class="section">
+  <div class="section-header" onclick="toggle('inc-all')">
+    <span class="icon">&#x1F6A8;</span>
+    <h2>All INCs</h2>
+    <span class="section-sub">All shift INCs &mdash; {len(ir_all or ir)} tickets</span>
+    <span class="count">{len(ir_all or ir)}</span>
+    <span class="toggle" id="inc-all-tog">&#9654;</span>
+  </div>
+  <div class="section-body" id="inc-all" style="display:none">
+    <div class="filter-bar">
+      <input type="text" placeholder="Filter&hellip;" oninput="filterText('inc-all-tbl', this.value)">
+      <button class="filter-btn" onclick="filterPri('inc-all-tbl','p1',this)">P1</button>
+      <button class="filter-btn" onclick="filterPri('inc-all-tbl','p2',this)">P2</button>
+      <button class="filter-btn" onclick="filterPri('inc-all-tbl','p3',this)">P3</button>
+      <button class="filter-btn" onclick="filterPri('inc-all-tbl','p4',this)">P4</button>
+      <button class="filter-btn show-hidden-btn" data-tbl="inc-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="inc-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
+    </div>
+    <div id="inc-all-tbl" class="hide-covered">{inc_all_t}</div>
+  </div>
+</div>
+  </div>
+</div>
 </div>
 <div id="tab-spc" class="tab-panel">
 
@@ -569,13 +714,15 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 <script>
 var sharedNotes = {ho_json};
 var serverVersions = {source_versions_json};
+var known = JSON.parse(JSON.stringify(serverVersions));
+var _saving = false;
 
 (function() {{
-  var known = JSON.parse(JSON.stringify(serverVersions));
   setInterval(function() {{
     fetch('/api/status')
       .then(function(r) {{ return r.json(); }})
       .then(function(latest) {{
+        if (_saving) {{ Object.keys(latest).forEach(function(k) {{ known[k] = latest[k]; }}); return; }}
         var changed = Object.keys(latest).some(function(k) {{
           return latest[k] && latest[k] !== known[k];
         }});
@@ -600,16 +747,6 @@ function saveHO(el) {{
 function saveLR(el) {{
   if (el.checked) localStorage.setItem(el.dataset.key, '1');
   else            localStorage.removeItem(el.dataset.key);
-  _scheduleAutoSave();
-}}
-function moveTicket(sel) {{
-  _scheduleAutoSave();
-}}
-function saveInfo() {{
-  localStorage.setItem('info:notes', document.getElementById('info-area').innerText);
-  _scheduleAutoSave();
-}}
-function _serverSave(showIndicator) {{
   var notes = _collectNotes();
   var email = localStorage.getItem('user_email') || 'unknown';
   fetch('/api/export-notes', {{
@@ -617,9 +754,68 @@ function _serverSave(showIndicator) {{
     headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
     body: JSON.stringify(notes)
   }}).then(function(r) {{
-    if (r.ok) {{ if (showIndicator) showSaved(); }}
-    else {{ console.warn('Server save failed: HTTP ' + r.status); showSaveError(r.status); }}
-  }}).catch(function(e) {{ console.warn('Auto-save error:', e); showSaveError(0); }});
+    if (r.ok) location.reload();
+    else showSaveError(r.status);
+  }}).catch(function(e) {{ showSaveError(0); }});
+}}
+function removeFromActive(btn) {{
+  var key = btn.dataset.key;
+  var parts = key.split(':');
+  var sectionId = parts[1];
+  var ticketId  = parts.slice(2).join(':');
+  var excludeKey = 'exclude:' + sectionId + ':' + ticketId;
+  var moveKey    = 'move:'    + sectionId + ':' + ticketId;
+  var notes = _collectNotes();
+  notes[excludeKey] = '1';
+  delete notes[moveKey];
+  var email = localStorage.getItem('user_email') || 'unknown';
+  fetch('/api/export-notes', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
+    body: JSON.stringify(notes)
+  }}).then(function(r) {{
+    if (r.ok) location.reload();
+    else showSaveError(r.status);
+  }}).catch(function(e) {{ showSaveError(0); }});
+}}
+function moveTicket(sel) {{
+  if (sel.value) {{
+    var notes = _collectNotes();
+    var email = localStorage.getItem('user_email') || 'unknown';
+    fetch('/api/export-notes', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
+      body: JSON.stringify(notes)
+    }}).then(function(r) {{
+      if (r.ok) location.reload();
+      else showSaveError(r.status);
+    }}).catch(function(e) {{ showSaveError(0); }});
+  }} else {{
+    _scheduleAutoSave();
+  }}
+}}
+function saveInfo() {{
+  localStorage.setItem('info:notes', document.getElementById('info-area').innerText);
+  _scheduleAutoSave();
+}}
+function _serverSave(showIndicator) {{
+  _saving = true;
+  var notes = _collectNotes();
+  var email = localStorage.getItem('user_email') || 'unknown';
+  fetch('/api/export-notes', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
+    body: JSON.stringify(notes)
+  }}).then(function(r) {{
+    if (r.ok) {{
+      if (showIndicator) showSaved();
+      fetch('/api/status').then(function(s) {{ return s.json(); }}).then(function(latest) {{
+        Object.keys(latest).forEach(function(k) {{ known[k] = latest[k]; }});
+        _saving = false;
+      }}).catch(function() {{ _saving = false; }});
+    }}
+    else {{ _saving = false; console.warn('Server save failed: HTTP ' + r.status); showSaveError(r.status); }}
+  }}).catch(function(e) {{ _saving = false; console.warn('Auto-save error:', e); showSaveError(0); }});
 }}
 function hideRow(btn) {{
   var tr = btn.closest('tr');
@@ -680,10 +876,13 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','inc-active'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
+    if (el.value) {{
+      delete notes['exclude:' + el.value + ':' + tid];
+    }}
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
   var infoVal = document.getElementById('info-area').innerText.trim();
@@ -791,7 +990,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','inc-active'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;
