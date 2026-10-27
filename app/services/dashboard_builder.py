@@ -761,9 +761,13 @@ function saveLR(el) {{
 function removeFromActive(btn) {{
   var key = btn.dataset.key;
   var parts = key.split(':');
-  var excludeKey = 'exclude:' + parts[1] + ':' + parts.slice(2).join(':');
+  var sectionId = parts[1];
+  var ticketId  = parts.slice(2).join(':');
+  var excludeKey = 'exclude:' + sectionId + ':' + ticketId;
+  var moveKey    = 'move:'    + sectionId + ':' + ticketId;
   var notes = _collectNotes();
   notes[excludeKey] = '1';
+  delete notes[moveKey];
   var email = localStorage.getItem('user_email') || 'unknown';
   fetch('/api/export-notes', {{
     method: 'POST',
@@ -775,7 +779,20 @@ function removeFromActive(btn) {{
   }}).catch(function(e) {{ showSaveError(0); }});
 }}
 function moveTicket(sel) {{
-  _scheduleAutoSave();
+  if (sel.value && sel.value.endsWith('-active')) {{
+    var notes = _collectNotes();
+    var email = localStorage.getItem('user_email') || 'unknown';
+    fetch('/api/export-notes', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json', 'X-User-Email': email}},
+      body: JSON.stringify(notes)
+    }}).then(function(r) {{
+      if (r.ok) location.reload();
+      else showSaveError(r.status);
+    }}).catch(function(e) {{ showSaveError(0); }});
+  }} else {{
+    _scheduleAutoSave();
+  }}
 }}
 function saveInfo() {{
   localStorage.setItem('info:notes', document.getElementById('info-area').innerText);
