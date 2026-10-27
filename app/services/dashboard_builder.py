@@ -552,9 +552,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p4',this)">P4</button>
       <button class="filter-btn show-hidden-btn" data-tbl="spc-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
-      <button class="filter-btn toggle-covered-btn" data-tbl="spc-all-tbl" data-hiding="0" onclick="toggleCovered(this)">Show only uncovered (0)</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="spc-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
-    <div id="spc-all-tbl">{spc_all_t}</div>
+    <div id="spc-all-tbl" class="hide-covered">{spc_all_t}</div>
   </div>
 </div>
 
@@ -679,7 +679,7 @@ function toggleCovered(btn) {{
   else        {{ tbl.classList.remove('hide-covered'); }}
   btn.dataset.hiding = hiding ? '1' : '0';
   var uncovered = tbl.querySelectorAll('tbody tr:not(.row-covered):not(.row-hidden)').length;
-  btn.textContent = (hiding ? 'Show all' : 'Show only uncovered') + ' (' + uncovered + ' uncovered)';
+  btn.textContent = (hiding ? 'Show all' : 'Show only unassigned') + ' (' + uncovered + ' unassigned)';
   btn.classList.toggle('active', hiding);
 }}
 function _collectNotes() {{
@@ -822,7 +822,7 @@ document.addEventListener('DOMContentLoaded', function() {{
     var tbl = document.getElementById(btn.dataset.tbl);
     if (tbl) {{
       var uncovered = tbl.querySelectorAll('tbody tr:not(.row-covered):not(.row-hidden)').length;
-      btn.textContent = 'Show only uncovered (' + uncovered + ' uncovered)';
+      btn.textContent = 'Show only unassigned (' + uncovered + ' unassigned)';
     }}
   }});
   var infoVal = sharedNotes['info:notes'] || localStorage.getItem('info:notes') || '';
