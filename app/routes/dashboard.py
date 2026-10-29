@@ -3,7 +3,8 @@ from flask import Blueprint, Response, request
 from app.store import get_store
 from app.services.shift import detect_shift, get_shift_window, get_next_shift_window, get_previous_shift_window
 from app.services.xlsx_parser import (
-    safe_col, filter_snow_by_shift, filter_snow_by_status, filter_spc_by_shift,
+    safe_col, filter_snow_by_shift, filter_snow_by_status, filter_snow_by_recent,
+    filter_spc_by_shift,
     filter_spc_longrunners, filter_spc_by_last_changed, get_flagged_ids,
     get_section_overrides, apply_section_override, get_excluded_ids,
 )
@@ -23,11 +24,12 @@ def index():
     ch, cr, _cm = store.get_source("snow_case")
     ih, ir, _im = store.get_source("snow_inc")
     sh, sr_all_raw, sm = store.get_source("spc")
+    mh, mr, _mm = store.get_source("spc_maxdb")
 
     ho_status = store.get_ho_status()
 
     source_meta = {}
-    for key in ("snow_alert", "snow_case", "snow_inc", "spc"):
+    for key in ("snow_alert", "snow_case", "snow_inc", "spc", "spc_maxdb"):
         source_meta[key] = store.get_upload_meta(key)
 
     shift_param = request.args.get("shift", "").lower()
@@ -66,10 +68,10 @@ def index():
     sr_prev_excluded    = get_excluded_ids(ho_status, "spc-prev")
     sr_tbc_excluded     = get_excluded_ids(ho_status, "spc-tbc")
     sr_updated_excluded = get_excluded_ids(ho_status, "spc-updated")
+    mr_excluded         = get_excluded_ids(ho_status, "spc-maxdb")
 
-    # Active Alerts subsection
-    a_state_idx = safe_col(ah, "State")
-    ar_active   = filter_snow_by_status(ar, a_state_idx, {"New", "In Progress"}, a_link_idx, set(), excluded=ar_excluded)
+    # Active Alerts subsection — last 24h updated, or manually pinned
+    ar_active   = filter_snow_by_recent(ar, a_updated_idx, 24, a_link_idx, excluded=ar_excluded)
     ar_active   = apply_section_override(ar_active, ar, a_link_idx, overrides["alerts-active"], excluded=ar_excluded)
 
     # Active Cases subsection
@@ -108,6 +110,13 @@ def index():
     sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"], excluded=sr_updated_excluded)
     sr_prev    = apply_section_override(sr_prev,    sr_all_raw, s_link_idx, overrides["spc-prev"],    excluded=sr_prev_excluded)
 
+    # MaxDB Activities subsection — current-shift filter (same logic as SPC Current Shift)
+    m_link_idx = safe_col(mh, "Ticket ID")
+    m_subj_idx = safe_col(mh, "Subject")
+    mr_active  = filter_spc_by_shift(mr, m_subj_idx, shift_start, shift_end,
+                                      m_link_idx, set(), excluded=mr_excluded)
+    mr_active  = apply_section_override(mr_active, mr, m_link_idx, overrides["spc-maxdb"], excluded=mr_excluded)
+
     current_user = get_user_from_request(request)
     ho_updated_at = get_store().get_ho_updated_at()
 
@@ -128,5 +137,8 @@ def index():
         ar_all=ar,
         ir_active=ir_active,
         ir_all=ir,
+        maxdb_headers=mh,
+        maxdb_rows=mr,
+        maxdb_rows_active=mr_active,
     )
     return Response(html, mimetype="text/html")

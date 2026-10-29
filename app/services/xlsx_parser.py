@@ -182,7 +182,7 @@ def get_excluded_ids(ho_status, section_id):
 
 
 def get_section_overrides(ho_status: dict) -> dict:
-    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set(), "cases-active": set(), "alerts-active": set(), "inc-active": set()}
+    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set(), "cases-active": set(), "alerts-active": set(), "inc-active": set(), "spc-maxdb": set()}
     for key, val in ho_status.items():
         if key.startswith("move:") and str(val) == "1":
             parts = key.split(":", 2)
@@ -223,6 +223,20 @@ def filter_snow_by_status(rows, state_col_idx, states, link_col_idx, flagged, ex
         if ticket in excluded:
             continue
         if ticket in flagged or state in states_lower:
+            out.append(row)
+    return out
+
+
+def filter_snow_by_recent(rows, updated_col_idx, hours, link_col_idx, excluded=None):
+    excluded = excluded or set()
+    cutoff_str = (datetime.now(EET).replace(tzinfo=None) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M")
+    out = []
+    for row in rows:
+        ticket = row[link_col_idx] if link_col_idx < len(row) else ""
+        val    = row[updated_col_idx] if updated_col_idx < len(row) else ""
+        if ticket in excluded:
+            continue
+        if val and val >= cutoff_str:
             out.append(row)
     return out
 

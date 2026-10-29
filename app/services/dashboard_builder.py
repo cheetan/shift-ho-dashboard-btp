@@ -184,7 +184,8 @@ def source_card(source_key, label, pcounts, source_meta):
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
                source_meta=None, current_user="", ho_updated_at="", sr_prev=None,
-               cr_active=None, cr_all=None, ar_active=None, ar_all=None, ir_active=None, ir_all=None):
+               cr_active=None, cr_all=None, ar_active=None, ar_all=None, ir_active=None, ir_all=None,
+               maxdb_headers=None, maxdb_rows=None, maxdb_rows_active=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
@@ -201,6 +202,8 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     cpc  = count_by_priority(cr, c_pri)
     ipc  = count_by_priority(ir, i_pri)
     spc_c = count_by_priority(sr_all, s_pri)
+    m_pri = safe_col(maxdb_headers or [], "Priority")
+    mpc   = count_by_priority(maxdb_rows or [], m_pri)
 
     sched_activities = len(sr_current) + len(sr_prev or [])
 
@@ -334,11 +337,37 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         editable_col="HO Status", section_id="spc-all", hideable=False,
         coverage_map=coverage)
 
+    # MaxDB Activities tables
+    m_link_idx  = safe_col(maxdb_headers or [], "Ticket ID")
+    maxdb_cols  = [c for c in [
+        "Ticket ID", "Ticket Type", "Priority", "Status", "Processor", "Subject",
+        "Last Changed At", "Service Execution ID", "Process Execution ID", "Process Execution Status",
+    ] if c in (maxdb_headers or [])]
+    maxdb_coverage = {}
+    for _r in (maxdb_rows_active or []):
+        _tid = _r[m_link_idx] if m_link_idx < len(_r) else ""
+        if _tid: maxdb_coverage[_tid] = "MaxDB Activities"
+    maxdb_t = render_table(
+        maxdb_headers or [], maxdb_rows_active or [], maxdb_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
+        rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
+        sort_col="Last Changed At", sort_desc=True,
+        editable_col="HO Status", section_id="spc-maxdb", hideable=True, remove_to_all=True)
+    maxdb_all_t = render_table(
+        maxdb_headers or [], maxdb_rows or [], maxdb_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
+        rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
+        sort_col="Last Changed At", sort_desc=True,
+        editable_col="HO Status", section_id="spc-maxdb-all", hideable=False,
+        coverage_map=maxdb_coverage,
+        move_sections=[("spc-maxdb", "MaxDB Activities")])
+
     cards = (
-        source_card("spc",        "SPC XLSX",                 spc_c, source_meta) +
-        source_card("snow_case",  "Snow Cases XLSX",          cpc,   source_meta) +
-        source_card("snow_alert", "Snow Alerts XLSX",         apc,   source_meta) +
-        source_card("snow_inc",   "Snow Internal INCs XLSX",  ipc,   source_meta)
+        source_card("spc",        "SPC XLSX",                  spc_c, source_meta) +
+        source_card("spc_maxdb",  "MaxDB Activities XLSX",     mpc,   source_meta) +
+        source_card("snow_case",  "Snow Cases XLSX",           cpc,   source_meta) +
+        source_card("snow_alert", "Snow Alerts XLSX",          apc,   source_meta) +
+        source_card("snow_inc",   "Snow Internal INCs XLSX",   ipc,   source_meta)
     )
 
     def section(sid, icon, title, count, table_html, subtitle=""):
@@ -358,7 +387,6 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
       <button class="filter-btn" onclick="filterPri('{sid}-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('{sid}-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('{sid}-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="{sid}-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
     </div>
     <div id="{sid}-tbl">{table_html}</div>
   </div>
@@ -380,7 +408,6 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
       <button class="filter-btn" onclick="filterPri('{ssid}-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('{ssid}-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('{ssid}-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="{ssid}-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
     </div>
     <div id="{ssid}-tbl">{table_html}</div>
   </div>
@@ -416,10 +443,10 @@ main{{padding:20px 24px}}
 .source-card{{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;flex:1;min-width:180px;display:flex;flex-direction:column;gap:4px}}
 .source-card.hi{{border-color:rgba(250,140,22,.4)}}
 .source-card-top{{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}}
-.source-card-label{{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}}
+.source-card-label{{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}}
 .source-card-num{{font-size:34px;font-weight:700;color:#fff;line-height:1}}
 .source-card-pills{{display:flex;gap:6px;flex-wrap:wrap;min-height:18px}}
-.source-card-meta{{font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.source-card-meta{{font-size:11px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .upload-btn{{background:var(--border);border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}}
 .upload-btn:hover{{border-color:var(--accent);color:var(--accent)}}
 .upload-btn.uploading{{color:var(--p3);border-color:var(--p3)}}
@@ -535,11 +562,12 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </div>
 
 <div class="tab-bar">
-  <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_all)}</span></button>
+  <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_prev or []) + len(sr_current) + len(sr_lr)}</span></button>
+  <button class="tab-btn" data-tab="maxdb" onclick="switchTab('maxdb')">&#x1F5C4;&#xFE0F; MaxDB <span class="tab-count">{len(maxdb_rows_active or [])}</span></button>
   <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
-  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr_all or cr)}</span></button>
-  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar_all or ar)}</span></button>
-  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir_all or ir)}</span></button>
+  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr_active or [])}</span></button>
+  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar_active or [])}</span></button>
+  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir_active or [])}</span></button>
 </div>
 
 <div id="tab-cases" class="tab-panel">
@@ -558,16 +586,15 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All Cases</h2>
     <span class="section-sub">All shift cases &mdash; {len(cr_all or cr)} tickets</span>
     <span class="count">{len(cr_all or cr)}</span>
-    <span class="toggle" id="cases-all-tog">&#9654;</span>
+    <span class="toggle" id="cases-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="cases-all" style="display:none">
+  <div class="section-body" id="cases-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('cases-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('cases-all-tbl','p1',this)">P1</button>
       <button class="filter-btn" onclick="filterPri('cases-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('cases-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('cases-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="cases-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="cases-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="cases-all-tbl" class="hide-covered">{case_all_t}</div>
@@ -592,16 +619,15 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All Alerts</h2>
     <span class="section-sub">All shift alerts &mdash; {len(ar_all or ar)} tickets</span>
     <span class="count">{len(ar_all or ar)}</span>
-    <span class="toggle" id="alerts-all-tog">&#9654;</span>
+    <span class="toggle" id="alerts-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="alerts-all" style="display:none">
+  <div class="section-body" id="alerts-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('alerts-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p1',this)">P1</button>
       <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="alerts-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="alerts-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="alerts-all-tbl" class="hide-covered">{alert_all_t}</div>
@@ -626,16 +652,15 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All INCs</h2>
     <span class="section-sub">All shift INCs &mdash; {len(ir_all or ir)} tickets</span>
     <span class="count">{len(ir_all or ir)}</span>
-    <span class="toggle" id="inc-all-tog">&#9654;</span>
+    <span class="toggle" id="inc-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="inc-all" style="display:none">
+  <div class="section-body" id="inc-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('inc-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('inc-all-tbl','p1',this)">P1</button>
       <button class="filter-btn" onclick="filterPri('inc-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('inc-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('inc-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="inc-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="inc-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="inc-all-tbl" class="hide-covered">{inc_all_t}</div>
@@ -655,7 +680,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <span class="icon">&#x1F5A5;&#xFE0F;</span>
     <h2>SPC Tickets</h2>
     <span class="section-sub">{shift_label}</span>
-    <span class="count">{len(sr_all)}</span>
+    <span class="count">{len(sr_prev or []) + len(sr_current) + len(sr_lr)}</span>
     <span class="toggle" id="spc-tog">&#9660;</span>
   </div>
   <div class="section-body" id="spc">
@@ -673,19 +698,56 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All SPC Tickets</h2>
     <span class="section-sub">Complete XLSX &mdash; {len(sr_all_raw)} tickets</span>
     <span class="count">{len(sr_all_raw)}</span>
-    <span class="toggle" id="spc-all-tog">&#9654;</span>
+    <span class="toggle" id="spc-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="spc-all" style="display:none">
+  <div class="section-body" id="spc-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('spc-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p1',this)">P1</button>
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="spc-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="spc-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="spc-all-tbl" class="hide-covered">{spc_all_t}</div>
+  </div>
+</div>
+
+
+</div>
+<div id="tab-maxdb" class="tab-panel">
+
+<div class="section">
+  <div class="section-header" onclick="toggle('spc-maxdb-section')">
+    <span class="icon">&#x1F5C4;&#xFE0F;</span>
+    <h2>MaxDB Activities</h2>
+    <span class="section-sub">{shift_label}</span>
+    <span class="count">{len(maxdb_rows_active or [])}</span>
+    <span class="toggle" id="spc-maxdb-section-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="spc-maxdb-section">
+{subsection("spc-maxdb", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(maxdb_rows_active or []), maxdb_t)}
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header" onclick="toggle('spc-maxdb-all')">
+    <span class="icon">&#x1F5C4;&#xFE0F;</span>
+    <h2>All MaxDB Tickets</h2>
+    <span class="section-sub">Complete XLSX &mdash; {len(maxdb_rows or [])} tickets</span>
+    <span class="count">{len(maxdb_rows or [])}</span>
+    <span class="toggle" id="spc-maxdb-all-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="spc-maxdb-all">
+    <div class="filter-bar">
+      <input type="text" placeholder="Filter&hellip;" oninput="filterText('spc-maxdb-all-tbl', this.value)">
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p1',this)">P1</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p2',this)">P2</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p3',this)">P3</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p4',this)">P4</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="spc-maxdb-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
+    </div>
+    <div id="spc-maxdb-all-tbl" class="hide-covered">{maxdb_all_t}</div>
   </div>
 </div>
 
@@ -820,7 +882,6 @@ function _serverSave(showIndicator) {{
 function hideRow(btn) {{
   var tr = btn.closest('tr');
   var key = btn.dataset.key;
-  var tblDiv = tr.closest('div[id$="-tbl"]');
   if (tr.classList.contains('row-hidden')) {{
     localStorage.removeItem(key);
     tr.classList.remove('row-hidden');
@@ -832,27 +893,6 @@ function hideRow(btn) {{
     tr.classList.add('row-hidden');
     tr.style.display = 'none';
   }}
-  if (tblDiv) updateHiddenBtn(tblDiv.id);
-}}
-function updateHiddenBtn(tblId) {{
-  var btn = document.querySelector('.show-hidden-btn[data-tbl="' + tblId + '"]');
-  if (btn && btn.dataset.showing !== '1') {{
-    var cnt = document.getElementById(tblId).querySelectorAll('tr.row-hidden').length;
-    btn.textContent = 'Show hidden (' + cnt + ')';
-  }}
-}}
-function toggleHidden(btn) {{
-  var tbl = document.getElementById(btn.dataset.tbl);
-  var rows = tbl.querySelectorAll('tr.row-hidden');
-  var showing = btn.dataset.showing === '1';
-  rows.forEach(function(r) {{
-    r.style.display = showing ? 'none' : '';
-    var hb = r.querySelector('.hide-btn');
-    if (hb) {{ hb.innerHTML = showing ? '&#x2715;' : '&#x21A9;'; hb.title = showing ? 'Remove from view' : 'Restore to view'; }}
-  }});
-  btn.dataset.showing = showing ? '0' : '1';
-  btn.textContent = (showing ? 'Show hidden' : 'Hide hidden') + ' (' + rows.length + ')';
-  btn.classList.toggle('active', !showing);
 }}
 function toggleCovered(btn) {{
   var tbl = document.getElementById(btn.dataset.tbl);
@@ -876,7 +916,7 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','inc-active'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','inc-active','spc-maxdb'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
@@ -886,7 +926,7 @@ function _collectNotes() {{
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
   var infoVal = document.getElementById('info-area').innerText.trim();
-  if (infoVal) notes['info:notes'] = infoVal; else delete notes['info:notes'];
+  if (infoVal) notes['info:notes'] = infoVal.split(String.fromCharCode(10)).join('<NL>'); else delete notes['info:notes'];
   return notes;
 }}
 function exportNotes() {{
@@ -990,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','inc-active'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','inc-active','spc-maxdb'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;
@@ -998,10 +1038,6 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.hide-btn').forEach(function(btn) {{
     var val = localStorage.getItem(btn.dataset.key);
     if (val === '1') {{ var tr = btn.closest('tr'); tr.classList.add('row-hidden'); tr.style.display = 'none'; }}
-  }});
-  document.querySelectorAll('.show-hidden-btn').forEach(function(btn) {{
-    var tbl = document.getElementById(btn.dataset.tbl);
-    if (tbl) btn.textContent = 'Show hidden (' + tbl.querySelectorAll('tr.row-hidden').length + ')';
   }});
   document.querySelectorAll('.toggle-covered-btn').forEach(function(btn) {{
     var tbl = document.getElementById(btn.dataset.tbl);
@@ -1011,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', function() {{
     }}
   }});
   var infoVal = sharedNotes['info:notes'] || localStorage.getItem('info:notes') || '';
-  if (infoVal) document.getElementById('info-area').innerText = infoVal;
+  if (infoVal) document.getElementById('info-area').textContent = infoVal.split('<NL>').join(String.fromCharCode(10));
   var serverUser = {json.dumps(current_user)};
   if (serverUser && serverUser !== 'unknown') {{
     localStorage.setItem('user_email', serverUser);

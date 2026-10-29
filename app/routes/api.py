@@ -10,7 +10,7 @@ from app.config import get_upload_api_key
 bp = Blueprint("api", __name__, url_prefix="/api")
 
 SNOW_SOURCES = {"snow_alert", "snow_case", "snow_inc"}
-ALL_SOURCES  = SNOW_SOURCES | {"spc"}
+ALL_SOURCES  = SNOW_SOURCES | {"spc", "spc_maxdb"}
 
 
 @bp.route("/upload/<source>", methods=["POST"])
