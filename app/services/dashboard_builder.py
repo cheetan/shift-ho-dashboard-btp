@@ -387,7 +387,6 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
       <button class="filter-btn" onclick="filterPri('{sid}-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('{sid}-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('{sid}-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="{sid}-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
     </div>
     <div id="{sid}-tbl">{table_html}</div>
   </div>
@@ -409,7 +408,6 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
       <button class="filter-btn" onclick="filterPri('{ssid}-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('{ssid}-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('{ssid}-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="{ssid}-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
     </div>
     <div id="{ssid}-tbl">{table_html}</div>
   </div>
@@ -596,7 +594,6 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
       <button class="filter-btn" onclick="filterPri('cases-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('cases-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('cases-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="cases-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="cases-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="cases-all-tbl" class="hide-covered">{case_all_t}</div>
@@ -630,7 +627,6 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
       <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="alerts-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="alerts-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="alerts-all-tbl" class="hide-covered">{alert_all_t}</div>
@@ -664,7 +660,6 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
       <button class="filter-btn" onclick="filterPri('inc-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('inc-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('inc-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="inc-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="inc-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="inc-all-tbl" class="hide-covered">{inc_all_t}</div>
@@ -711,7 +706,6 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="spc-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="spc-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="spc-all-tbl" class="hide-covered">{spc_all_t}</div>
@@ -742,7 +736,6 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
       <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p2',this)">P2</button>
       <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p3',this)">P3</button>
       <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn show-hidden-btn" data-tbl="spc-maxdb-all-tbl" data-showing="0" onclick="toggleHidden(this)">Show hidden (0)</button>
       <button class="filter-btn toggle-covered-btn active" data-tbl="spc-maxdb-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="spc-maxdb-all-tbl" class="hide-covered">{maxdb_all_t}</div>
@@ -882,7 +875,6 @@ function _serverSave(showIndicator) {{
 function hideRow(btn) {{
   var tr = btn.closest('tr');
   var key = btn.dataset.key;
-  var tblDiv = tr.closest('div[id$="-tbl"]');
   if (tr.classList.contains('row-hidden')) {{
     localStorage.removeItem(key);
     tr.classList.remove('row-hidden');
@@ -894,27 +886,6 @@ function hideRow(btn) {{
     tr.classList.add('row-hidden');
     tr.style.display = 'none';
   }}
-  if (tblDiv) updateHiddenBtn(tblDiv.id);
-}}
-function updateHiddenBtn(tblId) {{
-  var btn = document.querySelector('.show-hidden-btn[data-tbl="' + tblId + '"]');
-  if (btn && btn.dataset.showing !== '1') {{
-    var cnt = document.getElementById(tblId).querySelectorAll('tr.row-hidden').length;
-    btn.textContent = 'Show hidden (' + cnt + ')';
-  }}
-}}
-function toggleHidden(btn) {{
-  var tbl = document.getElementById(btn.dataset.tbl);
-  var rows = tbl.querySelectorAll('tr.row-hidden');
-  var showing = btn.dataset.showing === '1';
-  rows.forEach(function(r) {{
-    r.style.display = showing ? 'none' : '';
-    var hb = r.querySelector('.hide-btn');
-    if (hb) {{ hb.innerHTML = showing ? '&#x2715;' : '&#x21A9;'; hb.title = showing ? 'Remove from view' : 'Restore to view'; }}
-  }});
-  btn.dataset.showing = showing ? '0' : '1';
-  btn.textContent = (showing ? 'Show hidden' : 'Hide hidden') + ' (' + rows.length + ')';
-  btn.classList.toggle('active', !showing);
 }}
 function toggleCovered(btn) {{
   var tbl = document.getElementById(btn.dataset.tbl);
@@ -1060,10 +1031,6 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.hide-btn').forEach(function(btn) {{
     var val = localStorage.getItem(btn.dataset.key);
     if (val === '1') {{ var tr = btn.closest('tr'); tr.classList.add('row-hidden'); tr.style.display = 'none'; }}
-  }});
-  document.querySelectorAll('.show-hidden-btn').forEach(function(btn) {{
-    var tbl = document.getElementById(btn.dataset.tbl);
-    if (tbl) btn.textContent = 'Show hidden (' + tbl.querySelectorAll('tr.row-hidden').length + ')';
   }});
   document.querySelectorAll('.toggle-covered-btn').forEach(function(btn) {{
     var tbl = document.getElementById(btn.dataset.tbl);
