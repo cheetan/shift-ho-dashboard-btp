@@ -587,9 +587,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All Cases</h2>
     <span class="section-sub">All shift cases &mdash; {len(cr_all or cr)} tickets</span>
     <span class="count">{len(cr_all or cr)}</span>
-    <span class="toggle" id="cases-all-tog">&#9654;</span>
+    <span class="toggle" id="cases-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="cases-all" style="display:none">
+  <div class="section-body" id="cases-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('cases-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('cases-all-tbl','p1',this)">P1</button>
@@ -621,9 +621,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All Alerts</h2>
     <span class="section-sub">All shift alerts &mdash; {len(ar_all or ar)} tickets</span>
     <span class="count">{len(ar_all or ar)}</span>
-    <span class="toggle" id="alerts-all-tog">&#9654;</span>
+    <span class="toggle" id="alerts-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="alerts-all" style="display:none">
+  <div class="section-body" id="alerts-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('alerts-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('alerts-all-tbl','p1',this)">P1</button>
@@ -655,9 +655,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All INCs</h2>
     <span class="section-sub">All shift INCs &mdash; {len(ir_all or ir)} tickets</span>
     <span class="count">{len(ir_all or ir)}</span>
-    <span class="toggle" id="inc-all-tog">&#9654;</span>
+    <span class="toggle" id="inc-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="inc-all" style="display:none">
+  <div class="section-body" id="inc-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('inc-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('inc-all-tbl','p1',this)">P1</button>
@@ -702,9 +702,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All SPC Tickets</h2>
     <span class="section-sub">Complete XLSX &mdash; {len(sr_all_raw)} tickets</span>
     <span class="count">{len(sr_all_raw)}</span>
-    <span class="toggle" id="spc-all-tog">&#9654;</span>
+    <span class="toggle" id="spc-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="spc-all" style="display:none">
+  <div class="section-body" id="spc-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('spc-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('spc-all-tbl','p1',this)">P1</button>
@@ -733,9 +733,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <h2>All MaxDB Tickets</h2>
     <span class="section-sub">Complete XLSX &mdash; {len(maxdb_rows or [])} tickets</span>
     <span class="count">{len(maxdb_rows or [])}</span>
-    <span class="toggle" id="spc-maxdb-all-tog">&#9654;</span>
+    <span class="toggle" id="spc-maxdb-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="spc-maxdb-all" style="display:none">
+  <div class="section-body" id="spc-maxdb-all">
     <div class="filter-bar">
       <input type="text" placeholder="Filter&hellip;" oninput="filterText('spc-maxdb-all-tbl', this.value)">
       <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p1',this)">P1</button>
