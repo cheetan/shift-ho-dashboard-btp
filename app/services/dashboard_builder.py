@@ -563,6 +563,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 
 <div class="tab-bar">
   <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_all)}</span></button>
+  <button class="tab-btn" data-tab="maxdb" onclick="switchTab('maxdb')">&#x1F5C4;&#xFE0F; MaxDB <span class="tab-count">{len(maxdb_rows or [])}</span></button>
   <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
   <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr_all or cr)}</span></button>
   <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar_all or ar)}</span></button>
@@ -712,15 +713,23 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   </div>
 </div>
 
+
+</div>
+<div id="tab-maxdb" class="tab-panel">
+
 <div class="section">
   <div class="section-header" onclick="toggle('spc-maxdb-section')">
     <span class="icon">&#x1F5C4;&#xFE0F;</span>
     <h2>MaxDB Activities</h2>
+    <span class="section-sub">{shift_label}</span>
     <span class="count">{len(maxdb_rows or [])}</span>
     <span class="toggle" id="spc-maxdb-section-tog">&#9660;</span>
   </div>
   <div class="section-body" id="spc-maxdb-section">
-{subsection("spc-maxdb", "&#x1F7E2;", "MaxDB Activities", len(maxdb_rows_active or []), maxdb_t)}
+{subsection("spc-maxdb", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(maxdb_rows_active or []), maxdb_t)}
+  </div>
+</div>
+
 <div class="section">
   <div class="section-header" onclick="toggle('spc-maxdb-all')">
     <span class="icon">&#x1F5C4;&#xFE0F;</span>
@@ -739,8 +748,6 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
       <button class="filter-btn toggle-covered-btn active" data-tbl="spc-maxdb-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
     <div id="spc-maxdb-all-tbl" class="hide-covered">{maxdb_all_t}</div>
-  </div>
-</div>
   </div>
 </div>
 

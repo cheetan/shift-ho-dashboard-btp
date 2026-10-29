@@ -110,9 +110,11 @@ def index():
     sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"], excluded=sr_updated_excluded)
     sr_prev    = apply_section_override(sr_prev,    sr_all_raw, s_link_idx, overrides["spc-prev"],    excluded=sr_prev_excluded)
 
-    # MaxDB Activities subsection (no time filter — all rows minus excluded)
+    # MaxDB Activities subsection — current-shift filter (same logic as SPC Current Shift)
     m_link_idx = safe_col(mh, "Ticket ID")
-    mr_active  = [r for r in mr if (r[m_link_idx] if m_link_idx < len(r) else "") not in mr_excluded]
+    m_subj_idx = safe_col(mh, "Subject")
+    mr_active  = filter_spc_by_shift(mr, m_subj_idx, shift_start, shift_end,
+                                      m_link_idx, set(), excluded=mr_excluded)
     mr_active  = apply_section_override(mr_active, mr, m_link_idx, overrides["spc-maxdb"], excluded=mr_excluded)
 
     current_user = get_user_from_request(request)
