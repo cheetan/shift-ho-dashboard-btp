@@ -926,7 +926,7 @@ function _collectNotes() {{
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
   var infoVal = document.getElementById('info-area').innerText.trim();
-  if (infoVal) notes['info:notes'] = infoVal; else delete notes['info:notes'];
+  if (infoVal) notes['info:notes'] = infoVal.replace(/\n/g, '\\n'); else delete notes['info:notes'];
   return notes;
 }}
 function exportNotes() {{
@@ -1047,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', function() {{
     }}
   }});
   var infoVal = sharedNotes['info:notes'] || localStorage.getItem('info:notes') || '';
-  if (infoVal) document.getElementById('info-area').innerText = infoVal;
+  if (infoVal) document.getElementById('info-area').textContent = infoVal.replace(/\\n/g, '\n');
   var serverUser = {json.dumps(current_user)};
   if (serverUser && serverUser !== 'unknown') {{
     localStorage.setItem('user_email', serverUser);
