@@ -565,9 +565,9 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_prev or []) + len(sr_current) + len(sr_lr)}</span></button>
   <button class="tab-btn" data-tab="maxdb" onclick="switchTab('maxdb')">&#x1F5C4;&#xFE0F; MaxDB <span class="tab-count">{len(maxdb_rows_active or [])}</span></button>
   <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
-  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr_all or cr)}</span></button>
-  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar_all or ar)}</span></button>
-  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir_all or ir)}</span></button>
+  <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr_active or [])}</span></button>
+  <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar_active or [])}</span></button>
+  <button class="tab-btn" data-tab="inc" onclick="switchTab('inc')">&#x1F6A8; Snow INCs <span class="tab-count">{len(ir_active or [])}</span></button>
 </div>
 
 <div id="tab-cases" class="tab-panel">
