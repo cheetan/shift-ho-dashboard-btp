@@ -445,10 +445,10 @@ main{{padding:20px 24px}}
 .source-card{{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;flex:1;min-width:180px;display:flex;flex-direction:column;gap:4px}}
 .source-card.hi{{border-color:rgba(250,140,22,.4)}}
 .source-card-top{{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}}
-.source-card-label{{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}}
+.source-card-label{{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}}
 .source-card-num{{font-size:34px;font-weight:700;color:#fff;line-height:1}}
 .source-card-pills{{display:flex;gap:6px;flex-wrap:wrap;min-height:18px}}
-.source-card-meta{{font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.source-card-meta{{font-size:11px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .upload-btn{{background:var(--border);border:1px solid transparent;color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}}
 .upload-btn:hover{{border-color:var(--accent);color:var(--accent)}}
 .upload-btn.uploading{{color:var(--p3);border-color:var(--p3)}}
