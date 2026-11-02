@@ -238,7 +238,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         _tid = _r[cases_link_idx] if cases_link_idx < len(_r) else ""
         if _tid: cases_coverage[_tid] = "Active Cases"
 
-    _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Updated"] if c in ch]
+    _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Next action reason","Updated"] if c in ch]
     case_active_t = render_table(
         ch, cr_active or [], _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
