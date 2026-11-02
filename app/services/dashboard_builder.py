@@ -807,6 +807,7 @@ function saveHO(el) {{
   _scheduleAutoSave();
 }}
 function saveLR(el) {{
+  if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
   if (el.checked) localStorage.setItem(el.dataset.key, '1');
   else            localStorage.removeItem(el.dataset.key);
   var notes = _collectNotes();
@@ -821,6 +822,7 @@ function saveLR(el) {{
   }}).catch(function(e) {{ showSaveError(0); }});
 }}
 function removeFromActive(btn) {{
+  if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
   var key = btn.dataset.key;
   var parts = key.split(':');
   var sectionId = parts[1];
@@ -842,6 +844,7 @@ function removeFromActive(btn) {{
 }}
 function moveTicket(sel) {{
   if (sel.value) {{
+    if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
     var notes = _collectNotes();
     var email = localStorage.getItem('user_email') || 'unknown';
     fetch('/api/export-notes', {{
