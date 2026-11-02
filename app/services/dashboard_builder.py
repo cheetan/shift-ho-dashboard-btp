@@ -53,7 +53,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
                  link_url=None, col_format=None, sort_col=None, sort_desc=False,
                  editable_col=None, section_id="", longrunner=False, lr_section_id=None, link_cols=None,
                  sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None, remove_to_all=False,
-                 highlight_col=None, highlight_exclude_val=None):
+                 highlight_col=None, highlight_exclude_val=None, highlight_urgent_val=None):
     rename     = rename or {}
     col_format = col_format or {}
     link_cols  = link_cols or {}
@@ -111,7 +111,8 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
                     cell = f'<span class="ticket-num">{val}</span>'
             else:
                 cell = val or "—"
-            cell_cls = ' class="cell-action-required"' if (is_row_highlighted and raw_col_name == highlight_col) else ''
+            cell_cls = ' class="cell-action-urgent"' if (is_row_highlighted and raw_col_name == highlight_col and highlight_urgent_val and h_val == highlight_urgent_val) else \
+                       ' class="cell-action-required"' if (is_row_highlighted and raw_col_name == highlight_col) else ''
             tds.append(f"<td{cell_cls}>{cell}</td>")
 
         ticket_key = row[link_raw] if link_raw is not None and link_raw < len(row) else ""
@@ -254,7 +255,8 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy, "Next Action Due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True,
-        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer")
+        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer",
+        highlight_urgent_val="IRT - Call to Customer")
 
     case_all_t = render_table(
         ch, cr_all or cr, _case_cols,
@@ -263,7 +265,8 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         editable_col="HO Status", section_id="cases-all", hideable=False,
         coverage_map=cases_coverage,
         move_sections=[("cases-active", "Active Cases")],
-        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer")
+        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer",
+        highlight_urgent_val="IRT - Call to Customer")
 
     inc_link_idx = safe_col(ih, "Number")
     inc_coverage = {}
@@ -492,6 +495,7 @@ tr.row-p3{{background:var(--p3-bg)}}
 tr.row-p4{{background:var(--p4-bg)}}
 tr.row-action-required{{border-left:3px solid #f59e0b}}
 td.cell-action-required{{background:#fef3c7;color:#92400e;font-weight:600}}
+td.cell-action-urgent{{background:#7f1d1d;color:#fff;font-weight:600}}
 .ticket-num{{font-family:monospace;font-size:12px;color:var(--accent);text-decoration:none}}
 .ticket-num:hover{{text-decoration:underline}}
 .ho-edit{{min-width:130px;min-height:20px;padding:3px 6px;border:1px dashed var(--border);border-radius:4px;outline:none;cursor:text;white-space:pre-wrap;word-break:break-word;color:var(--text)}}
