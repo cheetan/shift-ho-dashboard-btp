@@ -17,7 +17,7 @@ def create_app():
     @app.before_request
     def require_xsuaa_token():
         # /health is public; /api/upload/ uses its own API-key check
-        if request.path == '/health' or request.path.startswith('/api/upload/'):
+        if request.path == '/health' or request.path.startswith('/api/upload/') or request.path.startswith('/static/'):
             return
         auth = request.headers.get('Authorization', '')
         if not auth.startswith('Bearer '):
