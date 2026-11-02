@@ -249,11 +249,11 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         _tid = _r[cases_link_idx] if cases_link_idx < len(_r) else ""
         if _tid: cases_coverage[_tid] = "Active Cases"
 
-    _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Next action reason","Next Action Due","Updated"] if c in ch]
+    _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Next action reason","Next action due","Updated"] if c in ch]
     case_active_t = render_table(
         ch, cr_active or [], _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
-        col_format={"Updated": reformat_date_dmy, "Next Action Due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        col_format={"Updated": reformat_date_dmy, "Next action due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True,
         highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer",
         highlight_urgent_val="IRT - Call to Customer")
@@ -261,7 +261,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     case_all_t = render_table(
         ch, cr_all or cr, _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
-        col_format={"Updated": reformat_date_dmy, "Next Action Due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        col_format={"Updated": reformat_date_dmy, "Next action due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="cases-all", hideable=False,
         coverage_map=cases_coverage,
         move_sections=[("cases-active", "Active Cases")],
