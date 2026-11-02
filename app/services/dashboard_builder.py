@@ -773,17 +773,62 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </div>
 <div id="tab-info" class="tab-panel">
 
-<div class="section">
-  <div class="section-header" onclick="toggle('info')">
+<div class="subsection">
+  <div class="subsection-header" onclick="toggle('info-general')">
     <span class="icon">&#x2139;&#xFE0F;</span>
-    <h2>Information</h2>
-    <span class="toggle" id="info-tog">&#9660;</span>
+    <h3>General Information</h3>
+    <span class="toggle" id="info-general-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="info">
+  <div id="info-general">
     <div class="info-area-wrap">
-      <div class="info-area" id="info-area" contenteditable="true"
-           placeholder="Type here — notes, tasks, anything the team should be aware of&hellip;"
-           oninput="saveInfo()"></div>
+      <div class="info-area" id="info-area-general" contenteditable="true"
+           placeholder="General notes and information for the team&hellip;"
+           oninput="saveInfoArea('general')"></div>
+    </div>
+  </div>
+</div>
+
+<div class="subsection">
+  <div class="subsection-header" onclick="toggle('info-monitor')">
+    <span class="icon">&#x1F5A5;&#xFE0F;</span>
+    <h3>Monitor</h3>
+    <span class="toggle" id="info-monitor-tog">&#9660;</span>
+  </div>
+  <div id="info-monitor">
+    <div class="info-area-wrap">
+      <div class="info-area" id="info-area-monitor" contenteditable="true"
+           placeholder="Monitor notes&hellip;"
+           oninput="saveInfoArea('monitor')"></div>
+    </div>
+  </div>
+</div>
+
+<div class="subsection">
+  <div class="subsection-header" onclick="toggle('info-email')">
+    <span class="icon">&#x1F4E7;</span>
+    <h3>Follow-up email thread</h3>
+    <span class="toggle" id="info-email-tog">&#9660;</span>
+  </div>
+  <div id="info-email">
+    <div class="info-area-wrap">
+      <div class="info-area" id="info-area-email" contenteditable="true"
+           placeholder="Follow-up email threads&hellip;"
+           oninput="saveInfoArea('email')"></div>
+    </div>
+  </div>
+</div>
+
+<div class="subsection">
+  <div class="subsection-header" onclick="toggle('info-todo')">
+    <span class="icon">&#x1F4CB;</span>
+    <h3>To do</h3>
+    <span class="toggle" id="info-todo-tog">&#9660;</span>
+  </div>
+  <div id="info-todo">
+    <div class="info-area-wrap">
+      <div class="info-area" id="info-area-todo" contenteditable="true"
+           placeholder="Tasks and to-do items&hellip;"
+           oninput="saveInfoArea('todo')"></div>
     </div>
   </div>
 </div>
@@ -878,8 +923,9 @@ function moveTicket(sel) {{
     _scheduleAutoSave();
   }}
 }}
-function saveInfo() {{
-  localStorage.setItem('info:notes', document.getElementById('info-area').innerText);
+function saveInfoArea(key) {{
+  var el = document.getElementById('info-area-' + key);
+  if (el) localStorage.setItem('info:' + key, el.innerText);
   _scheduleAutoSave();
 }}
 function _serverSave(showIndicator) {{
@@ -947,8 +993,14 @@ function _collectNotes() {{
     }}
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
-  var infoVal = document.getElementById('info-area').innerText.trim();
-  if (infoVal) notes['info:notes'] = infoVal.split(String.fromCharCode(10)).join('<NL>'); else delete notes['info:notes'];
+  ['general','monitor','email','todo'].forEach(function(key) {{
+    var el = document.getElementById('info-area-' + key);
+    if (!el) return;
+    var val = el.innerText.trim();
+    if (val) notes['info:' + key] = val.split(String.fromCharCode(10)).join('<NL>');
+    else delete notes['info:' + key];
+  }});
+  delete notes['info:notes'];
   return notes;
 }}
 function exportNotes() {{
@@ -1068,8 +1120,8 @@ document.addEventListener('DOMContentLoaded', function() {{
       btn.textContent = 'Show only unassigned (' + uncovered + ' unassigned)';
     }}
   }});
-  var infoVal = sharedNotes['info:notes'] || localStorage.getItem('info:notes') || '';
-  if (infoVal) document.getElementById('info-area').textContent = infoVal.split('<NL>').join(String.fromCharCode(10));
+  var _infoKeys = {{general: sharedNotes['info:general'] || sharedNotes['info:notes'] || localStorage.getItem('info:general') || localStorage.getItem('info:notes') || '', monitor: sharedNotes['info:monitor'] || localStorage.getItem('info:monitor') || '', email: sharedNotes['info:email'] || localStorage.getItem('info:email') || '', todo: sharedNotes['info:todo'] || localStorage.getItem('info:todo') || ''}};
+  Object.keys(_infoKeys).forEach(function(key) {{ var el = document.getElementById('info-area-' + key); if (el && _infoKeys[key]) el.textContent = _infoKeys[key].split('<NL>').join(String.fromCharCode(10)); }});
   var serverUser = {json.dumps(current_user)};
   if (serverUser && serverUser !== 'unknown') {{
     localStorage.setItem('user_email', serverUser);
