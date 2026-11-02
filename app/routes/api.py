@@ -58,6 +58,11 @@ def export_notes():
     return jsonify({"ok": True})
 
 
+@bp.route("/ho-history/<ticket_id>", methods=["GET"])
+def ho_history(ticket_id):
+    return jsonify(get_store().get_ho_history(ticket_id))
+
+
 @bp.route("/notify", methods=["POST"])
 def notify():
     from app.config import get_ans_config

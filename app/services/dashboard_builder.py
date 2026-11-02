@@ -120,7 +120,12 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             tds.append(f'<td class="lr-td"><input type="checkbox" class="lr-flag" data-key="{lr_key}" onchange="saveLR(this)"></td>')
         if editable_col:
             ho_key = f"ho:{section_id}:{ticket_key}"
-            tds.append(f'<td><div class="ho-edit" contenteditable="true" data-key="{ho_key}" oninput="saveHO(this)"></div></td>')
+            tds.append(
+                f'<td><div class="ho-cell">'
+                f'<div class="ho-edit" contenteditable="true" data-key="{ho_key}" oninput="saveHO(this)"></div>'
+                f'<button class="ho-hist-btn" data-ticket="{ticket_key}" onclick="showHOHistory(this)" title="View history">&#x1F550;</button>'
+                f'</div></td>'
+            )
         if coverage_map is not None:
             cov_label = coverage_map.get(ticket_key, "") if ticket_key else ""
             if cov_label:
@@ -482,6 +487,16 @@ tr.row-p4{{background:var(--p4-bg)}}
 .ho-edit{{min-width:130px;min-height:20px;padding:3px 6px;border:1px dashed var(--border);border-radius:4px;outline:none;cursor:text;white-space:pre-wrap;word-break:break-word;color:var(--text)}}
 .ho-edit:focus{{border-color:var(--accent);background:rgba(79,142,247,.08)}}
 .ho-edit:not(:empty){{border-style:solid;border-color:rgba(79,142,247,.35)}}
+.ho-cell{{display:flex;align-items:flex-start;gap:3px}}
+.ho-hist-btn{{flex-shrink:0;background:none;border:none;cursor:pointer;font-size:12px;padding:1px 3px;opacity:0.35;line-height:1;color:var(--text)}}
+.ho-hist-btn:hover{{opacity:1;color:var(--accent)}}
+.ho-hist-popup{{position:absolute;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;min-width:260px;max-width:440px;box-shadow:0 4px 20px rgba(0,0,0,.25);font-size:13px}}
+.ho-hist-popup strong{{display:block;margin-bottom:6px;color:var(--text)}}
+.ho-hist-popup ul{{margin:0;padding-left:14px}}
+.ho-hist-popup li{{margin-bottom:5px;line-height:1.4}}
+.ho-hist-at{{color:var(--muted);font-size:11px;margin-right:4px}}
+.ho-hist-by{{color:var(--accent);margin-right:4px}}
+.ho-hist-val{{font-style:italic}}
 .lr-th{{width:80px;text-align:center}}
 .lr-td{{text-align:center;vertical-align:middle}}
 .lr-flag{{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}}
@@ -805,6 +820,41 @@ function _scheduleAutoSave() {{
 function saveHO(el) {{
   localStorage.setItem(el.dataset.key, el.innerText);
   _scheduleAutoSave();
+}}
+var _histPopup = null;
+function showHOHistory(btn) {{
+  if (_histPopup) {{ _histPopup.remove(); _histPopup = null; }}
+  var ticketId = btn.dataset.ticket;
+  fetch('/api/ho-history/' + encodeURIComponent(ticketId))
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{
+      var pop = document.createElement('div');
+      pop.className = 'ho-hist-popup';
+      if (!data.length) {{
+        pop.innerHTML = '<strong>&#x1F550; History</strong><p style="color:var(--muted);margin:4px 0 0">No changes recorded yet.</p>';
+      }} else {{
+        pop.innerHTML = '<strong>&#x1F550; History</strong><ul>' +
+          data.map(function(h) {{
+            var v = h.value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return '<li><span class="ho-hist-at">' + h.at + '</span><span class="ho-hist-by">' + h.by + '</span><span class="ho-hist-val">' + v + '</span></li>';
+          }}).join('') + '</ul>';
+      }}
+      var r = btn.getBoundingClientRect();
+      pop.style.position = 'absolute';
+      pop.style.top  = (r.bottom + window.scrollY + 4) + 'px';
+      pop.style.left = Math.max(4, r.left + window.scrollX - 100) + 'px';
+      document.body.appendChild(pop);
+      _histPopup = pop;
+      setTimeout(function() {{
+        function close(e) {{
+          if (!pop.contains(e.target) && e.target !== btn) {{
+            pop.remove(); _histPopup = null;
+            document.removeEventListener('click', close);
+          }}
+        }}
+        document.addEventListener('click', close);
+      }}, 0);
+    }}).catch(function() {{}});
 }}
 function saveLR(el) {{
   if (el.checked) localStorage.setItem(el.dataset.key, '1');

@@ -27,3 +27,7 @@ class DataStore(ABC):
     @abstractmethod
     def get_ho_updated_at(self) -> str:
         """Return the UTC timestamp of the last save_ho_status call, or '' if never saved."""
+
+    @abstractmethod
+    def get_ho_history(self, ticket_id: str) -> list:
+        """Return all changes for a ticket, most-recent first. Each item: {value, by, at}."""
