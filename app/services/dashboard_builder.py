@@ -52,7 +52,8 @@ def reformat_date_dmy(val):
 def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=None,
                  link_url=None, col_format=None, sort_col=None, sort_desc=False,
                  editable_col=None, section_id="", longrunner=False, lr_section_id=None, link_cols=None,
-                 sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None, remove_to_all=False):
+                 sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None, remove_to_all=False,
+                 highlight_col=None, highlight_exclude_val=None):
     rename     = rename or {}
     col_format = col_format or {}
     link_cols  = link_cols or {}
@@ -146,7 +147,13 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             )
 
         row_covered_cls = " row-covered" if (coverage_map is not None and ticket_key and ticket_key in coverage_map) else ""
-        tbody.append(f'<tr class="row-{pcls}{row_covered_cls}" data-hide-key="{f"hide:{section_id}:{ticket_key}" if hideable else ""}">{hide_td}{"".join(tds)}</tr>')
+        highlight_cls = ""
+        if highlight_col and highlight_col in headers:
+            h_idx = headers.index(highlight_col)
+            h_val = (row[h_idx] if h_idx < len(row) else "").strip()
+            if h_val and h_val != highlight_exclude_val:
+                highlight_cls = " row-action-required"
+        tbody.append(f'<tr class="row-{pcls}{row_covered_cls}{highlight_cls}" data-hide-key="{f"hide:{section_id}:{ticket_key}" if hideable else ""}">{hide_td}{"".join(tds)}</tr>')
 
     return f'<div class="table-wrap"><table><thead><tr>{th}</tr></thead><tbody>{"".join(tbody)}</tbody></table></div>'
 
@@ -243,7 +250,8 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         ch, cr_active or [], _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True)
+        editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True,
+        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer")
 
     case_all_t = render_table(
         ch, cr_all or cr, _case_cols,
@@ -251,7 +259,8 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="cases-all", hideable=False,
         coverage_map=cases_coverage,
-        move_sections=[("cases-active", "Active Cases")])
+        move_sections=[("cases-active", "Active Cases")],
+        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer")
 
     inc_link_idx = safe_col(ih, "Number")
     inc_coverage = {}
@@ -477,6 +486,7 @@ tr.row-p1{{background:var(--p1-bg)}}
 tr.row-p2{{background:var(--p2-bg)}}
 tr.row-p3{{background:var(--p3-bg)}}
 tr.row-p4{{background:var(--p4-bg)}}
+tr.row-action-required{{border-left:3px solid #f59e0b}}
 .ticket-num{{font-family:monospace;font-size:12px;color:var(--accent);text-decoration:none}}
 .ticket-num:hover{{text-decoration:underline}}
 .ho-edit{{min-width:130px;min-height:20px;padding:3px 6px;border:1px dashed var(--border);border-radius:4px;outline:none;cursor:text;white-space:pre-wrap;word-break:break-word;color:var(--text)}}
