@@ -131,7 +131,12 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             tds.append(f'<td class="lr-td"><input type="checkbox" class="lr-flag" data-key="{lr_key}" onchange="saveLR(this)"></td>')
         if editable_col:
             ho_key = f"ho:{section_id}:{ticket_key}"
-            tds.append(f'<td><div class="ho-edit" contenteditable="true" data-key="{ho_key}" oninput="saveHO(this)"></div></td>')
+            tds.append(
+                f'<td><div class="ho-cell">'
+                f'<div class="ho-edit" contenteditable="true" data-key="{ho_key}" oninput="saveHO(this)"></div>'
+                f'<button class="ho-hist-btn" data-ticket="{ticket_key}" onclick="showHOHistory(this)" title="View history">&#x1F550;</button>'
+                f'</div></td>'
+            )
         if coverage_map is not None:
             cov_label = coverage_map.get(ticket_key, "") if ticket_key else ""
             if cov_label:
@@ -501,6 +506,16 @@ td.cell-action-urgent{{background:#7f1d1d;color:#fff;font-weight:600}}
 .ho-edit{{min-width:130px;min-height:20px;padding:3px 6px;border:1px dashed var(--border);border-radius:4px;outline:none;cursor:text;white-space:pre-wrap;word-break:break-word;color:var(--text)}}
 .ho-edit:focus{{border-color:var(--accent);background:rgba(79,142,247,.08)}}
 .ho-edit:not(:empty){{border-style:solid;border-color:rgba(79,142,247,.35)}}
+.ho-cell{{display:flex;align-items:flex-start;gap:3px}}
+.ho-hist-btn{{flex-shrink:0;background:none;border:none;cursor:pointer;font-size:12px;padding:1px 3px;opacity:0.35;line-height:1;color:var(--text)}}
+.ho-hist-btn:hover{{opacity:1;color:var(--accent)}}
+.ho-hist-popup{{position:absolute;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;min-width:260px;max-width:440px;box-shadow:0 4px 20px rgba(0,0,0,.25);font-size:13px}}
+.ho-hist-popup strong{{display:block;margin-bottom:6px;color:var(--text)}}
+.ho-hist-popup ul{{margin:0;padding-left:14px}}
+.ho-hist-popup li{{margin-bottom:5px;line-height:1.4}}
+.ho-hist-at{{color:var(--muted);font-size:11px;margin-right:4px}}
+.ho-hist-by{{color:var(--accent);margin-right:4px}}
+.ho-hist-val{{font-style:italic}}
 .lr-th{{width:80px;text-align:center}}
 .lr-td{{text-align:center;vertical-align:middle}}
 .lr-flag{{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}}
@@ -771,6 +786,43 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </div>
 
 </div>
+<div id="tab-maxdb" class="tab-panel">
+
+<div class="section">
+  <div class="section-header" onclick="toggle('spc-maxdb-section')">
+    <span class="icon">&#x1F5C4;&#xFE0F;</span>
+    <h2>MaxDB Activities</h2>
+    <span class="section-sub">{shift_label}</span>
+    <span class="count">{len(maxdb_rows_active or [])}</span>
+    <span class="toggle" id="spc-maxdb-section-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="spc-maxdb-section">
+{subsection("spc-maxdb", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(maxdb_rows_active or []), maxdb_t)}
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header" onclick="toggle('spc-maxdb-all')">
+    <span class="icon">&#x1F5C4;&#xFE0F;</span>
+    <h2>All MaxDB Tickets</h2>
+    <span class="section-sub">Complete XLSX &mdash; {len(maxdb_rows or [])} tickets</span>
+    <span class="count">{len(maxdb_rows or [])}</span>
+    <span class="toggle" id="spc-maxdb-all-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="spc-maxdb-all">
+    <div class="filter-bar">
+      <input type="text" placeholder="Filter&hellip;" oninput="filterText('spc-maxdb-all-tbl', this.value)">
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p1',this)">P1</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p2',this)">P2</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p3',this)">P3</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p4',this)">P4</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="spc-maxdb-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
+    </div>
+    <div id="spc-maxdb-all-tbl" class="hide-covered">{maxdb_all_t}</div>
+  </div>
+</div>
+
+</div>
 <div id="tab-info" class="tab-panel">
 
 <div class="subsection">
@@ -869,6 +921,41 @@ function _scheduleAutoSave() {{
 function saveHO(el) {{
   localStorage.setItem(el.dataset.key, el.innerText);
   _scheduleAutoSave();
+}}
+var _histPopup = null;
+function showHOHistory(btn) {{
+  if (_histPopup) {{ _histPopup.remove(); _histPopup = null; }}
+  var ticketId = btn.dataset.ticket;
+  fetch('/api/ho-history/' + encodeURIComponent(ticketId))
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{
+      var pop = document.createElement('div');
+      pop.className = 'ho-hist-popup';
+      if (!data.length) {{
+        pop.innerHTML = '<strong>&#x1F550; History</strong><p style="color:var(--muted);margin:4px 0 0">No changes recorded yet.</p>';
+      }} else {{
+        pop.innerHTML = '<strong>&#x1F550; History</strong><ul>' +
+          data.map(function(h) {{
+            var v = h.value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return '<li><span class="ho-hist-at">' + h.at + '</span><span class="ho-hist-by">' + h.by + '</span><span class="ho-hist-val">' + v + '</span></li>';
+          }}).join('') + '</ul>';
+      }}
+      var r = btn.getBoundingClientRect();
+      pop.style.position = 'absolute';
+      pop.style.top  = (r.bottom + window.scrollY + 4) + 'px';
+      pop.style.left = Math.max(4, r.left + window.scrollX - 100) + 'px';
+      document.body.appendChild(pop);
+      _histPopup = pop;
+      setTimeout(function() {{
+        function close(e) {{
+          if (!pop.contains(e.target) && e.target !== btn) {{
+            pop.remove(); _histPopup = null;
+            document.removeEventListener('click', close);
+          }}
+        }}
+        document.addEventListener('click', close);
+      }}, 0);
+    }}).catch(function() {{}});
 }}
 function saveLR(el) {{
   if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
@@ -993,14 +1080,8 @@ function _collectNotes() {{
     }}
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
-  ['general','monitor','email','todo'].forEach(function(key) {{
-    var el = document.getElementById('info-area-' + key);
-    if (!el) return;
-    var val = el.innerText.trim();
-    if (val) notes['info:' + key] = val.split(String.fromCharCode(10)).join('<NL>');
-    else delete notes['info:' + key];
-  }});
-  delete notes['info:notes'];
+  var infoVal = document.getElementById('info-area').innerText.trim();
+  if (infoVal) notes['info:notes'] = infoVal.split(String.fromCharCode(10)).join('<NL>'); else delete notes['info:notes'];
   return notes;
 }}
 function exportNotes() {{
@@ -1120,8 +1201,8 @@ document.addEventListener('DOMContentLoaded', function() {{
       btn.textContent = 'Show only unassigned (' + uncovered + ' unassigned)';
     }}
   }});
-  var _infoKeys = {{general: sharedNotes['info:general'] || sharedNotes['info:notes'] || localStorage.getItem('info:general') || localStorage.getItem('info:notes') || '', monitor: sharedNotes['info:monitor'] || localStorage.getItem('info:monitor') || '', email: sharedNotes['info:email'] || localStorage.getItem('info:email') || '', todo: sharedNotes['info:todo'] || localStorage.getItem('info:todo') || ''}};
-  Object.keys(_infoKeys).forEach(function(key) {{ var el = document.getElementById('info-area-' + key); if (el && _infoKeys[key]) el.textContent = _infoKeys[key].split('<NL>').join(String.fromCharCode(10)); }});
+  var infoVal = sharedNotes['info:notes'] || localStorage.getItem('info:notes') || '';
+  if (infoVal) document.getElementById('info-area').textContent = infoVal.split('<NL>').join(String.fromCharCode(10));
   var serverUser = {json.dumps(current_user)};
   if (serverUser && serverUser !== 'unknown') {{
     localStorage.setItem('user_email', serverUser);

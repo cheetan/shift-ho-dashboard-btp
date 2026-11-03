@@ -9,6 +9,7 @@ class HanaStore(DataStore):
 
     def __init__(self):
         self._conn = None
+        self._history_table_ensured = False
 
     def _get_conn(self):
         from hdbcli import dbapi
@@ -26,6 +27,26 @@ class HanaStore(DataStore):
 
     def _cursor(self):
         return self._get_conn().cursor()
+
+    def _ensure_history_table(self):
+        if self._history_table_ensured:
+            return
+        try:
+            cur = self._cursor()
+            cur.execute(
+                "CREATE TABLE HO_STATUS_HISTORY ("
+                "ID BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+                "TICKET_ID NVARCHAR(200) NOT NULL, "
+                "NOTE_VALUE NVARCHAR(5000) NOT NULL, "
+                "CHANGED_BY NVARCHAR(200) NOT NULL, "
+                "CHANGED_AT NVARCHAR(30) NOT NULL"
+                ")"
+            )
+            self._get_conn().commit()
+            cur.close()
+        except Exception:
+            pass  # table already exists
+        self._history_table_ensured = True
 
     def upsert_source(self, source, headers, rows, uploaded_by, meta=None):
         cur = self._cursor()
@@ -84,8 +105,33 @@ class HanaStore(DataStore):
         return {r[0]: r[1] for r in rows}
 
     def save_ho_status(self, notes, updated_by):
+        self._ensure_history_table()
         cur = self._cursor()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+        # Diff ho: keys by ticket_id to detect changes and record history
+        old_notes = self.get_ho_status()
+        old_by_ticket = {}
+        for key, val in old_notes.items():
+            if key.startswith("ho:") and key.count(":") >= 2:
+                old_by_ticket[key.split(":", 2)[2]] = val.strip()
+        new_by_ticket = {}
+        for key, val in notes.items():
+            if key.startswith("ho:") and key.count(":") >= 2:
+                new_by_ticket[key.split(":", 2)[2]] = str(val).strip()
+        recorded = set()
+        for tid, new_val in new_by_ticket.items():
+            if tid in recorded:
+                continue
+            old_val = old_by_ticket.get(tid, "")
+            if new_val and new_val != old_val:
+                cur.execute(
+                    "INSERT INTO HO_STATUS_HISTORY (TICKET_ID, NOTE_VALUE, CHANGED_BY, CHANGED_AT) "
+                    "VALUES (?, ?, ?, ?)",
+                    (tid, new_val[:5000], updated_by, now),
+                )
+                recorded.add(tid)
+
         cur.execute("DELETE FROM HO_STATUS")
         for key, value in notes.items():
             if key.startswith("hide:"):
@@ -97,6 +143,18 @@ class HanaStore(DataStore):
             )
         self._get_conn().commit()
         cur.close()
+
+    def get_ho_history(self, ticket_id):
+        self._ensure_history_table()
+        cur = self._cursor()
+        cur.execute(
+            "SELECT NOTE_VALUE, CHANGED_BY, CHANGED_AT FROM HO_STATUS_HISTORY "
+            "WHERE TICKET_ID = ? ORDER BY CHANGED_AT DESC",
+            (ticket_id,),
+        )
+        rows = cur.fetchall()
+        cur.close()
+        return [{"value": r[0], "by": r[1], "at": str(r[2])[:16]} for r in rows]
 
     def get_ho_updated_at(self) -> str:
         cur = self._cursor()
