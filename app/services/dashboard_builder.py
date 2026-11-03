@@ -1201,8 +1201,6 @@ document.addEventListener('DOMContentLoaded', function() {{
       btn.textContent = 'Show only unassigned (' + uncovered + ' unassigned)';
     }}
   }});
-  var infoVal = sharedNotes['info:notes'] || localStorage.getItem('info:notes') || '';
-  if (infoVal) document.getElementById('info-area').textContent = infoVal.split('<NL>').join(String.fromCharCode(10));
   var serverUser = {json.dumps(current_user)};
   if (serverUser && serverUser !== 'unknown') {{
     localStorage.setItem('user_email', serverUser);
