@@ -6,7 +6,7 @@ applications:
       - nodejs_buildpack
     env:
       destinations: >
-        [{"name":"shift-ho-backend","url":"https://shift-ho-dashboard.cfapps.eu12-001.hana.ondemand.com","forwardAuthToken":true}]
+        [{"name":"shift-ho-backend","url":"https://shift-ho-dashboard.cfapps.eu01-canary.hana.ondemand.com","forwardAuthToken":true}]
     services:
       - shift-ho-xsuaa
 

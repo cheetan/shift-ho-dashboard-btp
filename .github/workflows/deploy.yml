@@ -27,6 +27,9 @@ jobs:
             -o "${{ secrets.CF_ORG }}" \
             -s "${{ secrets.CF_SPACE }}"
 
+      - name: Deploy
+        run: cf push --no-start
+
       - name: Set HANA credentials
         run: |
           cf set-env shift-ho-dashboard HANA_HOST "${{ secrets.HANA_HOST }}"
@@ -35,10 +38,12 @@ jobs:
           cf set-env shift-ho-dashboard HANA_PASSWORD "${{ secrets.HANA_PASSWORD }}"
           cf set-env shift-ho-dashboard UPLOAD_API_KEY "${{ secrets.UPLOAD_API_KEY }}"
 
-      - name: Deploy
-        run: cf push
+      - name: Start apps
+        run: |
+          cf start shift-ho-dashboard
+          cf start shift-ho-approuter
 
       - name: Verify health
         run: |
           sleep 15
-          curl -f https://shift-ho-approuter.cfapps.eu12-001.hana.ondemand.com/health
+          curl -f https://shift-ho-approuter.cfapps.eu01-canary.hana.ondemand.com/health

@@ -52,7 +52,8 @@ def reformat_date_dmy(val):
 def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=None,
                  link_url=None, col_format=None, sort_col=None, sort_desc=False,
                  editable_col=None, section_id="", longrunner=False, lr_section_id=None, link_cols=None,
-                 sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None, remove_to_all=False):
+                 sort_key_fn=None, hideable=False, coverage_map=None, move_sections=None, remove_to_all=False,
+                 highlight_col=None, highlight_exclude_val=None, highlight_urgent_val=None):
     rename     = rename or {}
     col_format = col_format or {}
     link_cols  = link_cols or {}
@@ -83,6 +84,14 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
     for row in rows:
         p_val = row[headers.index(pri_col)] if pri_col in headers else ""
         pcls  = priority_class(p_val)
+        highlight_cls = ""
+        is_row_highlighted = False
+        if highlight_col and highlight_col in headers:
+            h_idx = headers.index(highlight_col)
+            h_val = (row[h_idx] if h_idx < len(row) else "").strip()
+            if h_val and h_val != highlight_exclude_val:
+                highlight_cls = " row-action-required"
+                is_row_highlighted = True
         tds   = []
         for local_i, raw_i in enumerate(idxs):
             val = row[raw_i] if raw_i < len(row) else ""
@@ -102,7 +111,9 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
                     cell = f'<span class="ticket-num">{val}</span>'
             else:
                 cell = val or "—"
-            tds.append(f"<td>{cell}</td>")
+            cell_cls = ' class="cell-action-urgent"' if (is_row_highlighted and raw_col_name == highlight_col and highlight_urgent_val and h_val == highlight_urgent_val) else \
+                       ' class="cell-action-required"' if (is_row_highlighted and raw_col_name == highlight_col) else ''
+            tds.append(f"<td{cell_cls}>{cell}</td>")
 
         ticket_key = row[link_raw] if link_raw is not None and link_raw < len(row) else ""
 
@@ -151,7 +162,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             )
 
         row_covered_cls = " row-covered" if (coverage_map is not None and ticket_key and ticket_key in coverage_map) else ""
-        tbody.append(f'<tr class="row-{pcls}{row_covered_cls}" data-hide-key="{f"hide:{section_id}:{ticket_key}" if hideable else ""}">{hide_td}{"".join(tds)}</tr>')
+        tbody.append(f'<tr class="row-{pcls}{row_covered_cls}{highlight_cls}" data-hide-key="{f"hide:{section_id}:{ticket_key}" if hideable else ""}">{hide_td}{"".join(tds)}</tr>')
 
     return f'<div class="table-wrap"><table><thead><tr>{th}</tr></thead><tbody>{"".join(tbody)}</tbody></table></div>'
 
@@ -243,20 +254,24 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         _tid = _r[cases_link_idx] if cases_link_idx < len(_r) else ""
         if _tid: cases_coverage[_tid] = "Active Cases"
 
-    _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Updated"] if c in ch]
+    _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Next action reason","Next action due","Updated"] if c in ch]
     case_active_t = render_table(
         ch, cr_active or [], _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
-        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True)
+        col_format={"Updated": reformat_date_dmy, "Next action due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True,
+        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer",
+        highlight_urgent_val="IRT - Call to Customer")
 
     case_all_t = render_table(
         ch, cr_all or cr, _case_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
-        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        col_format={"Updated": reformat_date_dmy, "Next action due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="cases-all", hideable=False,
         coverage_map=cases_coverage,
-        move_sections=[("cases-active", "Active Cases")])
+        move_sections=[("cases-active", "Active Cases")],
+        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer",
+        highlight_urgent_val="IRT - Call to Customer")
 
     inc_link_idx = safe_col(ih, "Number")
     inc_coverage = {}
@@ -423,6 +438,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <title>Shift Handover Dashboard EU DB L2</title>
 <style>
 :root {{
@@ -482,6 +498,9 @@ tr.row-p1{{background:var(--p1-bg)}}
 tr.row-p2{{background:var(--p2-bg)}}
 tr.row-p3{{background:var(--p3-bg)}}
 tr.row-p4{{background:var(--p4-bg)}}
+tr.row-action-required{{border-left:3px solid #f59e0b}}
+td.cell-action-required{{background:#fef3c7;color:#92400e;font-weight:600}}
+td.cell-action-urgent{{background:#7f1d1d;color:#fff;font-weight:600}}
 .ticket-num{{font-family:monospace;font-size:12px;color:var(--accent);text-decoration:none}}
 .ticket-num:hover{{text-decoration:underline}}
 .ho-edit{{min-width:130px;min-height:20px;padding:3px 6px;border:1px dashed var(--border);border-radius:4px;outline:none;cursor:text;white-space:pre-wrap;word-break:break-word;color:var(--text)}}
@@ -767,19 +786,101 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </div>
 
 </div>
-<div id="tab-info" class="tab-panel">
+<div id="tab-maxdb" class="tab-panel">
 
 <div class="section">
-  <div class="section-header" onclick="toggle('info')">
-    <span class="icon">&#x2139;&#xFE0F;</span>
-    <h2>Information</h2>
-    <span class="toggle" id="info-tog">&#9660;</span>
+  <div class="section-header" onclick="toggle('spc-maxdb-section')">
+    <span class="icon">&#x1F5C4;&#xFE0F;</span>
+    <h2>MaxDB Activities</h2>
+    <span class="section-sub">{shift_label}</span>
+    <span class="count">{len(maxdb_rows_active or [])}</span>
+    <span class="toggle" id="spc-maxdb-section-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="info">
+  <div class="section-body" id="spc-maxdb-section">
+{subsection("spc-maxdb", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(maxdb_rows_active or []), maxdb_t)}
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header" onclick="toggle('spc-maxdb-all')">
+    <span class="icon">&#x1F5C4;&#xFE0F;</span>
+    <h2>All MaxDB Tickets</h2>
+    <span class="section-sub">Complete XLSX &mdash; {len(maxdb_rows or [])} tickets</span>
+    <span class="count">{len(maxdb_rows or [])}</span>
+    <span class="toggle" id="spc-maxdb-all-tog">&#9660;</span>
+  </div>
+  <div class="section-body" id="spc-maxdb-all">
+    <div class="filter-bar">
+      <input type="text" placeholder="Filter&hellip;" oninput="filterText('spc-maxdb-all-tbl', this.value)">
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p1',this)">P1</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p2',this)">P2</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p3',this)">P3</button>
+      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p4',this)">P4</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="spc-maxdb-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
+    </div>
+    <div id="spc-maxdb-all-tbl" class="hide-covered">{maxdb_all_t}</div>
+  </div>
+</div>
+
+</div>
+<div id="tab-info" class="tab-panel">
+
+<div class="subsection">
+  <div class="subsection-header" onclick="toggle('info-general')">
+    <span class="icon">&#x2139;&#xFE0F;</span>
+    <h3>General Information</h3>
+    <span class="toggle" id="info-general-tog">&#9660;</span>
+  </div>
+  <div id="info-general">
     <div class="info-area-wrap">
-      <div class="info-area" id="info-area" contenteditable="true"
-           placeholder="Type here — notes, tasks, anything the team should be aware of&hellip;"
-           oninput="saveInfo()"></div>
+      <div class="info-area" id="info-area-general" contenteditable="true"
+           placeholder="General notes and information for the team&hellip;"
+           oninput="saveInfoArea('general')"></div>
+    </div>
+  </div>
+</div>
+
+<div class="subsection">
+  <div class="subsection-header" onclick="toggle('info-monitor')">
+    <span class="icon">&#x1F5A5;&#xFE0F;</span>
+    <h3>Monitor</h3>
+    <span class="toggle" id="info-monitor-tog">&#9660;</span>
+  </div>
+  <div id="info-monitor">
+    <div class="info-area-wrap">
+      <div class="info-area" id="info-area-monitor" contenteditable="true"
+           placeholder="Monitor notes&hellip;"
+           oninput="saveInfoArea('monitor')"></div>
+    </div>
+  </div>
+</div>
+
+<div class="subsection">
+  <div class="subsection-header" onclick="toggle('info-email')">
+    <span class="icon">&#x1F4E7;</span>
+    <h3>Follow-up email thread</h3>
+    <span class="toggle" id="info-email-tog">&#9660;</span>
+  </div>
+  <div id="info-email">
+    <div class="info-area-wrap">
+      <div class="info-area" id="info-area-email" contenteditable="true"
+           placeholder="Follow-up email threads&hellip;"
+           oninput="saveInfoArea('email')"></div>
+    </div>
+  </div>
+</div>
+
+<div class="subsection">
+  <div class="subsection-header" onclick="toggle('info-todo')">
+    <span class="icon">&#x1F4CB;</span>
+    <h3>To do</h3>
+    <span class="toggle" id="info-todo-tog">&#9660;</span>
+  </div>
+  <div id="info-todo">
+    <div class="info-area-wrap">
+      <div class="info-area" id="info-area-todo" contenteditable="true"
+           placeholder="Tasks and to-do items&hellip;"
+           oninput="saveInfoArea('todo')"></div>
     </div>
   </div>
 </div>
@@ -857,6 +958,7 @@ function showHOHistory(btn) {{
     }}).catch(function() {{}});
 }}
 function saveLR(el) {{
+  if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
   if (el.checked) localStorage.setItem(el.dataset.key, '1');
   else            localStorage.removeItem(el.dataset.key);
   var notes = _collectNotes();
@@ -871,6 +973,7 @@ function saveLR(el) {{
   }}).catch(function(e) {{ showSaveError(0); }});
 }}
 function removeFromActive(btn) {{
+  if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
   var key = btn.dataset.key;
   var parts = key.split(':');
   var sectionId = parts[1];
@@ -892,6 +995,7 @@ function removeFromActive(btn) {{
 }}
 function moveTicket(sel) {{
   if (sel.value) {{
+    if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
     var notes = _collectNotes();
     var email = localStorage.getItem('user_email') || 'unknown';
     fetch('/api/export-notes', {{
@@ -906,8 +1010,9 @@ function moveTicket(sel) {{
     _scheduleAutoSave();
   }}
 }}
-function saveInfo() {{
-  localStorage.setItem('info:notes', document.getElementById('info-area').innerText);
+function saveInfoArea(key) {{
+  var el = document.getElementById('info-area-' + key);
+  if (el) localStorage.setItem('info:' + key, el.innerText);
   _scheduleAutoSave();
 }}
 function _serverSave(showIndicator) {{
