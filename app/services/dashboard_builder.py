@@ -1207,7 +1207,7 @@ document.addEventListener('DOMContentLoaded', function() {{
     var el = document.getElementById('info-area-' + k);
     if (!el) return;
     var val = sharedNotes['info:' + k] || localStorage.getItem('info:' + k) || '';
-    if (val) el.innerText = val;
+    if (val) el.innerHTML = val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   }});
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
