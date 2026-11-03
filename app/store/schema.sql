@@ -24,7 +24,6 @@ CREATE TABLE HO_STATUS (
 
 -- Append-only audit log for HO Status changes (auto-created by hana.py on first save)
 CREATE TABLE HO_STATUS_HISTORY (
-    ID          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     TICKET_ID   NVARCHAR(200)  NOT NULL,
     NOTE_VALUE  NVARCHAR(5000) NOT NULL,
     CHANGED_BY  NVARCHAR(200)  NOT NULL,

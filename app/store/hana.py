@@ -33,19 +33,24 @@ class HanaStore(DataStore):
             return
         try:
             cur = self._cursor()
-            cur.execute(
-                "CREATE TABLE HO_STATUS_HISTORY ("
-                "ID BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
-                "TICKET_ID NVARCHAR(200) NOT NULL, "
-                "NOTE_VALUE NVARCHAR(5000) NOT NULL, "
-                "CHANGED_BY NVARCHAR(200) NOT NULL, "
-                "CHANGED_AT NVARCHAR(30) NOT NULL"
-                ")"
-            )
-            self._get_conn().commit()
+            cur.execute("SELECT COUNT(*) FROM HO_STATUS_HISTORY WHERE 1=0")
             cur.close()
         except Exception:
-            pass  # table already exists
+            try:
+                cur = self._cursor()
+                cur.execute(
+                    "CREATE TABLE HO_STATUS_HISTORY ("
+                    "TICKET_ID   NVARCHAR(200)  NOT NULL, "
+                    "NOTE_VALUE  NVARCHAR(5000) NOT NULL, "
+                    "CHANGED_BY  NVARCHAR(200)  NOT NULL, "
+                    "CHANGED_AT  NVARCHAR(30)   NOT NULL"
+                    ")"
+                )
+                self._get_conn().commit()
+                cur.close()
+            except Exception as e:
+                import sys
+                print(f"ERROR creating HO_STATUS_HISTORY: {e}", file=sys.stderr)
         self._history_table_ensured = True
 
     def upsert_source(self, source, headers, rows, uploaded_by, meta=None):
@@ -109,35 +114,40 @@ class HanaStore(DataStore):
         cur = self._cursor()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-        # Diff ho: keys by ticket_id to detect changes and record history
-        old_notes = self.get_ho_status()
-        old_by_ticket = {}
-        for key, val in old_notes.items():
-            if key.startswith("ho:") and key.count(":") >= 2:
-                old_by_ticket[key.split(":", 2)[2]] = val.strip()
-        new_by_ticket = {}
-        for key, val in notes.items():
-            if key.startswith("ho:") and key.count(":") >= 2:
-                tid = key.split(":", 2)[2]
-                v = str(val).strip()
+        # History recording — isolated so failures never abort the main save
+        try:
+            old_notes = self.get_ho_status()
+            old_by_ticket = {}
+            for key, val in old_notes.items():
+                if key.startswith("ho:") and key.count(":") >= 2:
+                    old_by_ticket[key.split(":", 2)[2]] = val.strip()
+            new_by_ticket = {}
+            for key, val in notes.items():
+                if key.startswith("ho:") and key.count(":") >= 2:
+                    tid = key.split(":", 2)[2]
+                    v = str(val).strip()
+                    old_val = old_by_ticket.get(tid, "")
+                    if v != old_val:
+                        new_by_ticket[tid] = v
+                    elif tid not in new_by_ticket:
+                        new_by_ticket[tid] = v
+            recorded = set()
+            for tid, new_val in new_by_ticket.items():
+                if tid in recorded:
+                    continue
                 old_val = old_by_ticket.get(tid, "")
-                if v != old_val:
-                    new_by_ticket[tid] = v      # changed value takes priority
-                elif tid not in new_by_ticket:
-                    new_by_ticket[tid] = v      # first-seen as fallback
-        recorded = set()
-        for tid, new_val in new_by_ticket.items():
-            if tid in recorded:
-                continue
-            old_val = old_by_ticket.get(tid, "")
-            if new_val and new_val != old_val:
-                cur.execute(
-                    "INSERT INTO HO_STATUS_HISTORY (TICKET_ID, NOTE_VALUE, CHANGED_BY, CHANGED_AT) "
-                    "VALUES (?, ?, ?, ?)",
-                    (tid, new_val[:5000], updated_by, now),
-                )
-                recorded.add(tid)
+                if new_val and new_val != old_val:
+                    cur.execute(
+                        "INSERT INTO HO_STATUS_HISTORY (TICKET_ID, NOTE_VALUE, CHANGED_BY, CHANGED_AT) "
+                        "VALUES (?, ?, ?, ?)",
+                        (tid, new_val[:5000], updated_by, now),
+                    )
+                    recorded.add(tid)
+        except Exception as e:
+            import sys
+            print(f"HO_STATUS_HISTORY insert error: {e}", file=sys.stderr)
 
+        # Main save — critical path, always runs
         cur.execute("DELETE FROM HO_STATUS")
         for key, value in notes.items():
             if key.startswith("hide:"):
