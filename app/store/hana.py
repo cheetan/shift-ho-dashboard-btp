@@ -118,7 +118,13 @@ class HanaStore(DataStore):
         new_by_ticket = {}
         for key, val in notes.items():
             if key.startswith("ho:") and key.count(":") >= 2:
-                new_by_ticket[key.split(":", 2)[2]] = str(val).strip()
+                tid = key.split(":", 2)[2]
+                v = str(val).strip()
+                old_val = old_by_ticket.get(tid, "")
+                if v != old_val:
+                    new_by_ticket[tid] = v      # changed value takes priority
+                elif tid not in new_by_ticket:
+                    new_by_ticket[tid] = v      # first-seen as fallback
         recorded = set()
         for tid, new_val in new_by_ticket.items():
             if tid in recorded:
