@@ -1,11 +1,14 @@
 import io
+import urllib.request
+import urllib.error
+import json as _json
 
 from flask import Blueprint, request, jsonify
 
 from app.store import get_store
 from app.services.xlsx_parser import read_snow_xlsx, read_spc_xlsx
 from app.utils.auth import get_user_from_request
-from app.config import get_upload_api_key
+from app.config import get_upload_api_key, get_github_issues_token
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -89,3 +92,39 @@ def status():
     }
     result["ho_status"] = store.get_ho_updated_at()
     return jsonify(result)
+
+
+@bp.route("/feedback", methods=["POST"])
+def feedback():
+    token = get_github_issues_token()
+    if not token:
+        return jsonify({"ok": False, "error": "Feedback not configured"}), 503
+
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify({"ok": False, "error": "Title is required"}), 400
+
+    submitter = get_user_from_request(request)
+    description = (data.get("description") or "").strip()
+    issue_type = data.get("type", "bug")
+    label = "bug" if issue_type == "bug" else "enhancement"
+    body = f"**Submitted by:** {submitter}\n\n{description}" if description else f"**Submitted by:** {submitter}"
+
+    payload = _json.dumps({"title": title, "body": body, "labels": [label]}).encode()
+    req = urllib.request.Request(
+        "https://api.github.com/repos/cheetan/shift-ho-dashboard-btp/issues",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = _json.loads(resp.read())
+            return jsonify({"ok": True, "url": result["html_url"]})
+    except urllib.error.HTTPError as e:
+        return jsonify({"ok": False, "error": f"GitHub API error {e.code}"}), 502

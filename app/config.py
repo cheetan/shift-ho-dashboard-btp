@@ -76,4 +76,8 @@ def get_upload_api_key() -> str:
     return os.environ.get("UPLOAD_API_KEY", "")
 
 
+def get_github_issues_token() -> str:
+    return os.environ.get("GITHUB_ISSUES_TOKEN", "")
+
+
 USE_MEMORY_STORE: bool = os.environ.get("USE_MEMORY_STORE", "false").lower() == "true"

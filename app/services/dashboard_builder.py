@@ -588,7 +588,24 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <span class="user-pill">&#x1F464; <span id="user-email-display">—</span></span>
   <button class="export-btn" onclick="exportNotes()">&#x1F4BE; Save Notes to HANA</button>
   <button class="export-btn" id="notify-btn" onclick="notifyTeam(this)">&#x1F514; Notify Team</button>
+  <button class="export-btn" onclick="openFeedback()">&#x1F41B; Feedback</button>
 </header>
+<div id="feedback-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:9998;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:12px;padding:28px 32px;width:480px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+    <h2 style="margin:0 0 20px;font-size:16px;color:var(--text)">&#x1F41B; Submit Feedback</h2>
+    <select id="fb-type" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:12px;font-size:13px">
+      <option value="bug">&#x1F41B; Bug Report</option>
+      <option value="enhancement">&#x2728; Feature Request</option>
+    </select>
+    <input id="fb-title" placeholder="Brief summary&#x2026;" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:12px;font-size:13px;box-sizing:border-box"/>
+    <textarea id="fb-desc" rows="5" placeholder="Describe the issue or feature in detail&#x2026;" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box;resize:vertical"></textarea>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
+      <button onclick="closeFeedback()" style="padding:8px 18px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:13px">Cancel</button>
+      <button id="fb-submit" onclick="submitFeedback()" style="padding:8px 18px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600">Submit</button>
+    </div>
+    <div id="fb-result" style="margin-top:12px;font-size:13px"></div>
+  </div>
+</div>
 <main>
 
 <div class="source-cards">
@@ -1209,6 +1226,43 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.getElementById('user-email-display').textContent = em === '—' ? '—' : (em.split('@')[0] || em);
   switchTab(localStorage.getItem('active_tab') || 'spc');
 }});
+function openFeedback() {{
+  document.getElementById('fb-title').value = '';
+  document.getElementById('fb-desc').value = '';
+  document.getElementById('fb-result').innerHTML = '';
+  document.getElementById('feedback-overlay').style.display = 'flex';
+}}
+function closeFeedback() {{
+  document.getElementById('feedback-overlay').style.display = 'none';
+}}
+function submitFeedback() {{
+  var title = document.getElementById('fb-title').value.trim();
+  if (!title) {{ document.getElementById('fb-result').innerHTML = '<span style="color:#f87171">Please enter a summary.</span>'; return; }}
+  var btn = document.getElementById('fb-submit');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  fetch('/api/feedback', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json', 'X-User-Email': localStorage.getItem('user_email') || 'unknown'}},
+    body: JSON.stringify({{
+      type: document.getElementById('fb-type').value,
+      title: title,
+      description: document.getElementById('fb-desc').value.trim()
+    }})
+  }})
+  .then(function(r) {{ return r.json(); }})
+  .then(function(d) {{
+    btn.disabled = false; btn.textContent = 'Submit';
+    if (d.ok) {{
+      document.getElementById('fb-result').innerHTML = '✅ Submitted! <a href="' + d.url + '" target="_blank" style="color:var(--accent)">View issue</a>';
+    }} else {{
+      document.getElementById('fb-result').innerHTML = '<span style="color:#f87171">Error: ' + d.error + '</span>';
+    }}
+  }})
+  .catch(function() {{
+    btn.disabled = false; btn.textContent = 'Submit';
+    document.getElementById('fb-result').innerHTML = '<span style="color:#f87171">Network error — try again.</span>';
+  }});
+}}
 </script>
 </body>
 </html>"""
