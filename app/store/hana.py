@@ -111,45 +111,31 @@ class HanaStore(DataStore):
 
     def save_ho_status(self, notes, updated_by):
         self._ensure_history_table()
-        cur = self._cursor()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-        # History recording — isolated so failures never abort the main save
-        try:
-            cur.execute("SELECT NOTE_KEY, NOTE_VALUE FROM HO_STATUS")
-            old_rows = cur.fetchall()
-            old_notes = {r[0]: r[1] for r in old_rows}
-            old_by_ticket = {}
-            for key, val in old_notes.items():
-                if key.startswith("ho:") and key.count(":") >= 2:
-                    old_by_ticket[key.split(":", 2)[2]] = val.strip()
-            new_by_ticket = {}
-            for key, val in notes.items():
-                if key.startswith("ho:") and key.count(":") >= 2:
-                    tid = key.split(":", 2)[2]
-                    v = str(val).strip()
-                    old_val = old_by_ticket.get(tid, "")
-                    if v != old_val:
-                        new_by_ticket[tid] = v
-                    elif tid not in new_by_ticket:
-                        new_by_ticket[tid] = v
-            recorded = set()
-            for tid, new_val in new_by_ticket.items():
-                if tid in recorded:
-                    continue
-                old_val = old_by_ticket.get(tid, "")
-                if new_val and new_val != old_val:
-                    cur.execute(
-                        "INSERT INTO HO_STATUS_HISTORY (TICKET_ID, NOTE_VALUE, CHANGED_BY, CHANGED_AT) "
-                        "VALUES (?, ?, ?, ?)",
-                        (tid, new_val[:5000], updated_by, now),
-                    )
-                    recorded.add(tid)
-        except Exception as e:
-            import sys
-            print(f"HO_STATUS_HISTORY insert error: {e}", file=sys.stderr)
+        # Phase 1: read old values — no write cursor open, no double-cursor conflict
+        old_notes = self.get_ho_status()
+        old_by_ticket = {}
+        for key, val in old_notes.items():
+            if key.startswith("ho:") and key.count(":") >= 2:
+                old_by_ticket[key.split(":", 2)[2]] = val.strip()
 
-        # Main save — critical path, always runs
+        # Phase 2: compute diff in pure Python
+        history_entries = []
+        seen = set()
+        for key, val in notes.items():
+            if key.startswith("ho:") and key.count(":") >= 2:
+                tid = key.split(":", 2)[2]
+                if tid in seen:
+                    continue
+                v = str(val).strip()
+                old_val = old_by_ticket.get(tid, "")
+                if v and v != old_val:
+                    history_entries.append((tid, v))
+                    seen.add(tid)
+
+        # Phase 3: main save — own cursor, committed and closed before history
+        cur = self._cursor()
         cur.execute("DELETE FROM HO_STATUS")
         for key, value in notes.items():
             if key.startswith("hide:"):
@@ -161,6 +147,22 @@ class HanaStore(DataStore):
             )
         self._get_conn().commit()
         cur.close()
+
+        # Phase 4: history inserts — own cursor, own try/except, after main save committed
+        if history_entries:
+            try:
+                cur2 = self._cursor()
+                for tid, new_val in history_entries:
+                    cur2.execute(
+                        "INSERT INTO HO_STATUS_HISTORY (TICKET_ID, NOTE_VALUE, CHANGED_BY, CHANGED_AT) "
+                        "VALUES (?, ?, ?, ?)",
+                        (tid, new_val[:5000], updated_by, now),
+                    )
+                self._get_conn().commit()
+                cur2.close()
+            except Exception as e:
+                import sys
+                print(f"HO_STATUS_HISTORY insert error: {e}", file=sys.stderr)
 
     def get_ho_history(self, ticket_id):
         self._ensure_history_table()
