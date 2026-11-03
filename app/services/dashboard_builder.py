@@ -1097,8 +1097,12 @@ function _collectNotes() {{
     }}
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
-  var infoVal = document.getElementById('info-area').innerText.trim();
-  if (infoVal) notes['info:notes'] = infoVal.split(String.fromCharCode(10)).join('<NL>'); else delete notes['info:notes'];
+  ['general', 'monitor', 'email', 'todo'].forEach(function(k) {{
+    var el = document.getElementById('info-area-' + k);
+    if (!el) return;
+    var v = el.innerText.trim();
+    if (v) notes['info:' + k] = v; else delete notes['info:' + k];
+  }});
   return notes;
 }}
 function exportNotes() {{
@@ -1198,6 +1202,12 @@ document.addEventListener('DOMContentLoaded', function() {{
     var key = el.dataset.key;
     var val = sharedNotes[key] || localStorage.getItem(key);
     el.checked = val === '1';
+  }});
+  ['general', 'monitor', 'email', 'todo'].forEach(function(k) {{
+    var el = document.getElementById('info-area-' + k);
+    if (!el) return;
+    var val = sharedNotes['info:' + k] || localStorage.getItem('info:' + k) || '';
+    if (val) el.innerText = val;
   }});
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
