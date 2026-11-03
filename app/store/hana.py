@@ -116,7 +116,9 @@ class HanaStore(DataStore):
 
         # History recording — isolated so failures never abort the main save
         try:
-            old_notes = self.get_ho_status()
+            cur.execute("SELECT NOTE_KEY, NOTE_VALUE FROM HO_STATUS")
+            old_rows = cur.fetchall()
+            old_notes = {r[0]: r[1] for r in old_rows}
             old_by_ticket = {}
             for key, val in old_notes.items():
                 if key.startswith("ho:") and key.count(":") >= 2:
