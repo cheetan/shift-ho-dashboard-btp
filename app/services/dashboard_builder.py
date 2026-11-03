@@ -564,7 +564,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 .hide-covered tr.row-covered{{display:none}}
 .save-indicator{{position:fixed;bottom:24px;right:24px;background:#1a2e1a;border:2px solid #52c41a;color:#52c41a;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 4px 20px rgba(82,196,26,.35);letter-spacing:.02em;z-index:9999}}
 .save-indicator.show{{opacity:1;transform:translateY(0)}}
-.tab-bar{{display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)}}
+.tab-bar{{display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:100;background:var(--bg)}}
 .tab-btn{{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--muted);padding:10px 20px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:-2px;border-radius:6px 6px 0 0;font-family:var(--font);white-space:nowrap}}
 .tab-btn:hover{{color:var(--text)}}
 .tab-btn.active{{color:var(--accent);border-bottom-color:var(--accent)}}
