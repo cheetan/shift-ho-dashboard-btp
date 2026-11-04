@@ -170,14 +170,21 @@ class HanaStore(DataStore):
         )
         rows = cur.fetchall()
         cur.close()
-        deduped = []
-        seen = set()
+        # Pass 1: drop exact (value, second) duplicates — race-condition writes at same timestamp
+        seen_exact = set()
+        unique_rows = []
         for r in rows:
+            key = (r[0].strip(), str(r[2]))
+            if key not in seen_exact:
+                unique_rows.append(r)
+                seen_exact.add(key)
+
+        # Pass 2: consecutive dedup — show only value transitions, not repeated re-saves
+        deduped = []
+        for r in unique_rows:
             val = r[0].strip()
-            at  = str(r[2])[:16]
-            if (val, at) not in seen:
-                deduped.append({"value": val, "by": r[1], "at": at})
-                seen.add((val, at))
+            if not deduped or deduped[-1]["value"] != val:
+                deduped.append({"value": val, "by": r[1], "at": str(r[2])[:16]})
         return deduped
 
     def get_ho_updated_at(self) -> str:
