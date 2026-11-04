@@ -957,12 +957,17 @@ function showHOHistory(btn) {{
             return '<li><span class="ho-hist-at">' + h.at + '</span><span class="ho-hist-by">' + h.by + '</span><span class="ho-hist-val">' + v + '</span></li>';
           }}).join('') + '</ul>';
       }}
-      var r = btn.getBoundingClientRect();
       pop.style.position = 'absolute';
-      pop.style.top  = (r.bottom + window.scrollY + 4) + 'px';
-      pop.style.left = Math.max(4, r.left + window.scrollX - 100) + 'px';
+      pop.style.visibility = 'hidden';
       document.body.appendChild(pop);
       _histPopup = pop;
+      var r = btn.getBoundingClientRect();
+      var popW = pop.offsetWidth;
+      var leftPos = r.right + window.scrollX - popW;
+      leftPos = Math.max(8, Math.min(leftPos, window.scrollX + window.innerWidth - popW - 8));
+      pop.style.top  = (r.bottom + window.scrollY + 4) + 'px';
+      pop.style.left = leftPos + 'px';
+      pop.style.visibility = '';
       setTimeout(function() {{
         function close(e) {{
           if (!pop.contains(e.target) && e.target !== btn) {{
