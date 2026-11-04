@@ -37,7 +37,7 @@ jobs:
           cf set-env shift-ho-dashboard HANA_USER "${{ secrets.HANA_USER }}"
           cf set-env shift-ho-dashboard HANA_PASSWORD "${{ secrets.HANA_PASSWORD }}"
           cf set-env shift-ho-dashboard UPLOAD_API_KEY "${{ secrets.UPLOAD_API_KEY }}"
-          cf set-env shift-ho-dashboard GITHUB_ISSUES_TOKEN "${{ secrets.GITHUB_ISSUES_TOKEN }}"
+          cf set-env shift-ho-dashboard GITHUB_ISSUES_TOKEN "${{ secrets.GH_ISSUES_TOKEN }}"
 
       - name: Start apps
         run: |
