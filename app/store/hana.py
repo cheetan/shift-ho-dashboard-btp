@@ -171,9 +171,13 @@ class HanaStore(DataStore):
         rows = cur.fetchall()
         cur.close()
         deduped = []
+        seen = set()
         for r in rows:
-            if not deduped or deduped[-1]["value"] != r[0]:
-                deduped.append({"value": r[0], "by": r[1], "at": str(r[2])[:16]})
+            val = r[0].strip()
+            at  = str(r[2])[:16]
+            if (val, at) not in seen:
+                deduped.append({"value": val, "by": r[1], "at": at})
+                seen.add((val, at))
         return deduped
 
     def get_ho_updated_at(self) -> str:
