@@ -115,10 +115,6 @@ class HanaStore(DataStore):
 
         # Phase 1: read old values — no write cursor open, no double-cursor conflict
         old_notes = self.get_ho_status()
-        old_by_ticket = {}
-        for key, val in old_notes.items():
-            if key.startswith("ho:") and key.count(":") >= 2:
-                old_by_ticket[key.split(":", 2)[2]] = val.strip()
 
         # Phase 2: compute diff in pure Python
         history_entries = []
@@ -129,7 +125,7 @@ class HanaStore(DataStore):
                 if tid in seen:
                     continue
                 v = str(val).strip()
-                old_val = old_by_ticket.get(tid, "")
+                old_val = old_notes.get(key, "").strip()
                 if v and v != old_val:
                     history_entries.append((tid, v))
                     seen.add(tid)
@@ -174,7 +170,11 @@ class HanaStore(DataStore):
         )
         rows = cur.fetchall()
         cur.close()
-        return [{"value": r[0], "by": r[1], "at": str(r[2])[:16]} for r in rows]
+        deduped = []
+        for r in rows:
+            if not deduped or deduped[-1]["value"] != r[0]:
+                deduped.append({"value": r[0], "by": r[1], "at": str(r[2])[:16]})
+        return deduped
 
     def get_ho_updated_at(self) -> str:
         cur = self._cursor()
