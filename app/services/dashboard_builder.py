@@ -572,6 +572,17 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 .tab-btn.active .tab-count{{background:rgba(79,142,247,.2);color:var(--accent)}}
 .tab-panel{{display:none}}
 .tab-panel.active{{display:block}}
+@media(max-width:640px){{
+  header{{padding:10px 12px 8px;gap:8px}}
+  header h1{{font-size:15px}}
+  main{{padding:12px}}
+  .tab-bar{{overflow-x:auto;-webkit-overflow-scrolling:touch}}
+  .tab-btn{{padding:10px 14px;font-size:12px}}
+  .source-card{{min-width:140px}}
+  .filter-bar input,.subsection-filter input{{width:100%;flex:1 1 100%}}
+  .ho-edit{{min-width:80px}}
+  .ho-hist-popup{{min-width:200px;max-width:calc(100vw - 24px)}}
+}}
 </style>
 </head>
 <body>
