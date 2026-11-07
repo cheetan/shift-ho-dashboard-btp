@@ -814,43 +814,6 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 </div>
 
 </div>
-<div id="tab-maxdb" class="tab-panel">
-
-<div class="section">
-  <div class="section-header" onclick="toggle('spc-maxdb-section')">
-    <span class="icon">&#x1F5C4;&#xFE0F;</span>
-    <h2>MaxDB Activities</h2>
-    <span class="section-sub">{shift_label}</span>
-    <span class="count">{len(maxdb_rows_active or [])}</span>
-    <span class="toggle" id="spc-maxdb-section-tog">&#9660;</span>
-  </div>
-  <div class="section-body" id="spc-maxdb-section">
-{subsection("spc-maxdb", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(maxdb_rows_active or []), maxdb_t)}
-  </div>
-</div>
-
-<div class="section">
-  <div class="section-header" onclick="toggle('spc-maxdb-all')">
-    <span class="icon">&#x1F5C4;&#xFE0F;</span>
-    <h2>All MaxDB Tickets</h2>
-    <span class="section-sub">Complete XLSX &mdash; {len(maxdb_rows or [])} tickets</span>
-    <span class="count">{len(maxdb_rows or [])}</span>
-    <span class="toggle" id="spc-maxdb-all-tog">&#9660;</span>
-  </div>
-  <div class="section-body" id="spc-maxdb-all">
-    <div class="filter-bar">
-      <input type="text" placeholder="Filter&hellip;" oninput="filterText('spc-maxdb-all-tbl', this.value)">
-      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p1',this)">P1</button>
-      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p2',this)">P2</button>
-      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p3',this)">P3</button>
-      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn toggle-covered-btn active" data-tbl="spc-maxdb-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
-    </div>
-    <div id="spc-maxdb-all-tbl" class="hide-covered">{maxdb_all_t}</div>
-  </div>
-</div>
-
-</div>
 <div id="tab-info" class="tab-panel">
 
 <div class="subsection">
