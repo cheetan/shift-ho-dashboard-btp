@@ -71,7 +71,7 @@ def index():
     mr_excluded         = get_excluded_ids(ho_status, "spc-maxdb")
 
     # Active Alerts subsection — last 24h updated, or manually pinned
-    ar_active   = filter_snow_by_recent(ar, a_updated_idx, 24, a_link_idx, excluded=ar_excluded)
+    ar_active   = filter_snow_by_recent(ar, a_updated_idx, 16, a_link_idx, excluded=ar_excluded)
     ar_active   = apply_section_override(ar_active, ar, a_link_idx, overrides["alerts-active"], excluded=ar_excluded)
 
     ar_tbc_excluded = get_excluded_ids(ho_status, "alerts-tbc")

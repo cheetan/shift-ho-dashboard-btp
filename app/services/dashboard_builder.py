@@ -683,8 +683,8 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <span class="toggle" id="alerts-tog">&#9660;</span>
   </div>
   <div class="section-body" id="alerts">
-{subsection("alerts-active", "&#x1F7E2;", "Active Alerts", len(ar_active or []), alert_active_t)}
 {subsection("alerts-tbc", "&#x1F534;", "To be checked", len(ar_tbc or []), ar_tbc_t)}
+{subsection("alerts-active", "&#x1F7E2;", "Active Alerts", len(ar_active or []), alert_active_t)}
 <div class="section">
   <div class="section-header" onclick="toggle('alerts-all')">
     <span class="icon">&#x26A0;&#xFE0F;</span>
