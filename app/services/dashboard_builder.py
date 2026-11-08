@@ -346,7 +346,8 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         editable_col="HO Status", section_id="spc-current", longrunner=False,
-        sort_key_fn=spc_subj_sort, hideable=True, remove_to_all=True)
+        sort_key_fn=spc_subj_sort, hideable=True, remove_to_all=True,
+        move_sections=[("spc-prev","Previous Shift"),("spc-next","Next Shift"),("spc-tbc","To be checked"),("spc-updated","Updated")])
     spc_next_t = render_table(sh, sr_next, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
@@ -360,12 +361,14 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     spc_lr_t = render_table(sh, sr_lr, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
-        editable_col="HO Status", section_id="spc-tbc", longrunner=False, hideable=True, remove_to_all=True)
+        editable_col="HO Status", section_id="spc-tbc", longrunner=False, hideable=True, remove_to_all=True,
+        move_sections=[("spc-prev","Previous Shift"),("spc-current","Current Shift"),("spc-next","Next Shift"),("spc-updated","Updated")])
     spc_updated_t = render_table(sh, sr_updated, spc_cols,
         pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         sort_col="Last Changed At", sort_desc=True,
-        editable_col="HO Status", section_id="spc-updated", longrunner=False, hideable=True, remove_to_all=True)
+        editable_col="HO Status", section_id="spc-updated", longrunner=False, hideable=True, remove_to_all=True,
+        move_sections=[("spc-prev","Previous Shift"),("spc-current","Current Shift"),("spc-next","Next Shift"),("spc-tbc","To be checked")])
 
     spc_link_idx = safe_col(sh, "Ticket ID")
     coverage = {}
