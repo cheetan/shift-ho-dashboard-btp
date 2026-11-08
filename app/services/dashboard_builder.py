@@ -825,7 +825,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <div class="section-body" id="spc">
     {subsection("spc-prev",    "&#x23EA;",    f"Previous Shift &mdash; {prev_shift_label}", len(sr_prev or []), spc_prev_t)}
     {subsection("spc-current", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(sr_current), spc_current_t)}
-    {subsection("spc-next",    "&#x1F7E1;", f"Next Shift &mdash; {next_shift_label}", len(sr_next), spc_next_t)}
+    {subsection("spc-next",    "&#x23E9;",  f"Next Shift &mdash; {next_shift_label}", len(sr_next), spc_next_t)}
     {subsection("spc-tbc",      "&#x1F534;", "To be checked", len(sr_lr), spc_lr_t)}
     {subsection("spc-updated", "&#x1F504;", f"Tickets Updated on Former Shift &mdash; {shift_label}", len(sr_updated), spc_updated_t)}
   </div>
@@ -867,7 +867,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   <div class="section-body" id="maxdb-section">
 {subsection("maxdb-prev",    "&#x23EA;",    f"Previous Shift &mdash; {prev_shift_label}", len(maxdb_rows_prev or []), maxdb_prev_t)}
 {subsection("maxdb-current", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(maxdb_rows_current or []), maxdb_current_t)}
-{subsection("maxdb-next",    "&#x1F7E1;", f"Next Shift &mdash; {next_shift_label}", len(maxdb_rows_next or []), maxdb_next_t)}
+{subsection("maxdb-next",    "&#x23E9;",  f"Next Shift &mdash; {next_shift_label}", len(maxdb_rows_next or []), maxdb_next_t)}
 {subsection("maxdb-tbc",     "&#x1F534;", "To be checked", len(maxdb_rows_tbc or []), maxdb_tbc_t)}
 {subsection("maxdb-updated", "&#x1F504;", f"Tickets Updated on Former Shift &mdash; {shift_label}", len(maxdb_rows_updated or []), maxdb_updated_t)}
   </div>
