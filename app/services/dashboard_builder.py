@@ -142,7 +142,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             if cov_label:
                 _cov_cls = {"Current Shift": "cov-current", "Next Shift": "cov-next",
                             "To be checked": "cov-tbc", "Updated": "cov-updated",
-                            "Previous Shift": "cov-prev", "Active Cases": "cov-active",
+                            "Previous Shift": "cov-prev", "Cases Updated in the last 16 hours": "cov-active",
                             "Alerts Updated in the past 16 hrs": "cov-alerts-active", "Active INCs": "cov-inc-active"}.get(cov_label, "")
                 cov_cell = f'<span class="cov-badge {_cov_cls}">{cov_label}</span>'
             else:
@@ -201,7 +201,7 @@ def source_card(source_key, label, pcounts, source_meta):
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
                source_meta=None, current_user="", ho_updated_at="", sr_prev=None,
-               cr_active=None, cr_all=None, ar_active=None, ar_all=None, ar_tbc=None, ir_active=None, ir_all=None,
+               cr_active=None, cr_tbc=None, cr_all=None, ar_active=None, ar_all=None, ar_tbc=None, ir_active=None, ir_all=None,
                maxdb_headers=None, maxdb_rows=None, maxdb_rows_active=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
@@ -263,7 +263,10 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     cases_coverage = {}
     for _r in cr_active or []:
         _tid = _r[cases_link_idx] if cases_link_idx < len(_r) else ""
-        if _tid: cases_coverage[_tid] = "Active Cases"
+        if _tid: cases_coverage[_tid] = "Cases Updated in the last 16 hours"
+    for _r in cr_tbc or []:
+        _tid = _r[cases_link_idx] if cases_link_idx < len(_r) else ""
+        if _tid and _tid not in cases_coverage: cases_coverage[_tid] = "To be checked"
 
     _case_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Used for","Next action reason","Next action due","Updated"] if c in ch]
     case_active_t = render_table(
@@ -271,6 +274,15 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy, "Next action due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="cases-active", hideable=True, remove_to_all=True,
+        highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer",
+        highlight_urgent_val="IRT - Call to Customer",
+        move_sections=[("cases-tbc", "To be checked")])
+
+    case_tbc_t = render_table(
+        ch, cr_tbc or [], _case_cols,
+        pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
+        col_format={"Updated": reformat_date_dmy, "Next action due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        editable_col="HO Status", section_id="cases-tbc", hideable=True, remove_to_all=True,
         highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer",
         highlight_urgent_val="IRT - Call to Customer")
 
@@ -280,7 +292,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         col_format={"Updated": reformat_date_dmy, "Next action due": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="cases-all", hideable=False,
         coverage_map=cases_coverage,
-        move_sections=[("cases-active", "Active Cases")],
+        move_sections=[("cases-tbc", "To be checked")],
         highlight_col="Next action reason", highlight_exclude_val="Awaiting Customer",
         highlight_urgent_val="IRT - Call to Customer")
 
@@ -652,7 +664,8 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
     <span class="toggle" id="cases-tog">&#9660;</span>
   </div>
   <div class="section-body" id="cases">
-{subsection("cases-active", "&#x1F7E2;", "Active Cases", len(cr_active or []), case_active_t)}
+{subsection("cases-tbc",    "&#x1F534;", "To be checked", len(cr_tbc or []), case_tbc_t)}
+{subsection("cases-active", "&#x1F7E2;", "Cases Updated in the last 16 hours", len(cr_active or []), case_active_t)}
 <div class="section">
   <div class="section-header" onclick="toggle('cases-all')">
     <span class="icon">&#x1F4CB;</span>
@@ -991,7 +1004,7 @@ function removeFromActive(btn) {{
   var notes = _collectNotes();
   notes[excludeKey] = '1';
   delete notes[moveKey];
-  var _allSectionMap = {{'alerts-active':'alerts-all','alerts-tbc':'alerts-all','cases-active':'cases-all','inc-active':'inc-all','spc-current':'spc-all','spc-next':'spc-all','spc-prev':'spc-all','spc-tbc':'spc-all','spc-updated':'spc-all','spc-maxdb':'spc-maxdb-all'}};
+  var _allSectionMap = {{'alerts-active':'alerts-all','alerts-tbc':'alerts-all','cases-active':'cases-all','cases-tbc':'cases-all','inc-active':'inc-all','spc-current':'spc-all','spc-next':'spc-all','spc-prev':'spc-all','spc-tbc':'spc-all','spc-updated':'spc-all','spc-maxdb':'spc-maxdb-all'}};
   var _allSection = _allSectionMap[sectionId];
   if (_allSection) {{
     var _activeHOKey = 'ho:' + sectionId + ':' + ticketId;
@@ -1087,7 +1100,7 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','alerts-tbc','inc-active','spc-maxdb'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','cases-tbc','alerts-active','alerts-tbc','inc-active','spc-maxdb'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
@@ -1211,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','alerts-tbc','inc-active','spc-maxdb'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','cases-tbc','alerts-active','alerts-tbc','inc-active','spc-maxdb'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;

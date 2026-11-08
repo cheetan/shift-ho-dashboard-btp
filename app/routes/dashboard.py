@@ -77,10 +77,12 @@ def index():
     ar_tbc_excluded = get_excluded_ids(ho_status, "alerts-tbc")
     ar_tbc = apply_section_override([], ar, a_link_idx, overrides["alerts-tbc"], excluded=ar_tbc_excluded)
 
-    # Active Cases subsection
-    c_state_idx = safe_col(ch, "State")
-    cr_active   = filter_snow_by_status(cr, c_state_idx, {"New", "In Progress"}, c_link_idx, set(), excluded=cr_excluded)
-    cr_active   = apply_section_override(cr_active, cr, c_link_idx, overrides["cases-active"], excluded=cr_excluded)
+    # Cases Updated in the last 16 hours subsection
+    cr_active = filter_snow_by_recent(cr, c_updated_idx, 16, c_link_idx, excluded=cr_excluded)
+    cr_active = apply_section_override(cr_active, cr, c_link_idx, overrides["cases-active"], excluded=cr_excluded)
+
+    cr_tbc_excluded = get_excluded_ids(ho_status, "cases-tbc")
+    cr_tbc = apply_section_override([], cr, c_link_idx, overrides["cases-tbc"], excluded=cr_tbc_excluded)
 
     # Active INCs subsection
     i_state_idx = safe_col(ih, "State")
@@ -135,6 +137,7 @@ def index():
         ho_updated_at=ho_updated_at,
         sr_prev=sr_prev,
         cr_active=cr_active,
+        cr_tbc=cr_tbc,
         cr_all=cr,
         ar_active=ar_active,
         ar_tbc=ar_tbc,
