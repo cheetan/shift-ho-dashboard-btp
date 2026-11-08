@@ -979,6 +979,14 @@ function removeFromActive(btn) {{
   var notes = _collectNotes();
   notes[excludeKey] = '1';
   delete notes[moveKey];
+  var _allSectionMap = {{'alerts-active':'alerts-all','cases-active':'cases-all','inc-active':'inc-all','spc-current':'spc-all','spc-next':'spc-all','spc-prev':'spc-all','spc-tbc':'spc-all','spc-updated':'spc-all','spc-maxdb':'spc-maxdb-all'}};
+  var _allSection = _allSectionMap[sectionId];
+  if (_allSection) {{
+    var _activeHOKey = 'ho:' + sectionId + ':' + ticketId;
+    var _allHOKey    = 'ho:' + _allSection + ':' + ticketId;
+    var _activeVal   = notes[_activeHOKey] || '';
+    if (_activeVal) {{ notes[_allHOKey] = _activeVal; }} else {{ delete notes[_allHOKey]; }}
+  }}
   var email = localStorage.getItem('user_email') || 'unknown';
   fetch('/api/export-notes', {{
     method: 'POST',
