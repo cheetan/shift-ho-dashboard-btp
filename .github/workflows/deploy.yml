@@ -13,13 +13,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install CF CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          CF_URL=$(curl -fsSL \
-            -H "Authorization: Bearer ${{ github.token }}" \
-            https://api.github.com/repos/cloudfoundry/cli/releases/latest \
-            | jq -r '[.assets[] | select(.name | test("cf8.*linux_x86-64\\.tgz$"))][0].browser_download_url')
-          curl -fsSL --retry 3 --retry-delay 15 -o cf-cli.tgz "$CF_URL"
-          tar -zxf cf-cli.tgz
+          gh release download --repo cloudfoundry/cli --pattern "cf8*linux_x86-64*.tgz"
+          tar -zxf cf8*linux_x86-64*.tgz
           sudo mv cf8 /usr/local/bin/cf
           cf version
 
