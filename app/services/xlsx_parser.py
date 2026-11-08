@@ -182,7 +182,7 @@ def get_excluded_ids(ho_status, section_id):
 
 
 def get_section_overrides(ho_status: dict) -> dict:
-    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set(), "cases-active": set(), "cases-tbc": set(), "alerts-active": set(), "alerts-tbc": set(), "inc-active": set(), "spc-maxdb": set()}
+    overrides = {"spc-current": set(), "spc-next": set(), "spc-tbc": set(), "spc-updated": set(), "spc-prev": set(), "cases-active": set(), "cases-tbc": set(), "alerts-active": set(), "alerts-tbc": set(), "inc-active": set(), "inc-tbc": set(), "spc-maxdb": set()}
     for key, val in ho_status.items():
         if key.startswith("move:") and str(val) == "1":
             parts = key.split(":", 2)

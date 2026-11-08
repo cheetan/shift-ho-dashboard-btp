@@ -84,10 +84,12 @@ def index():
     cr_tbc_excluded = get_excluded_ids(ho_status, "cases-tbc")
     cr_tbc = apply_section_override([], cr, c_link_idx, overrides["cases-tbc"], excluded=cr_tbc_excluded)
 
-    # Active INCs subsection
-    i_state_idx = safe_col(ih, "State")
-    ir_active   = filter_snow_by_status(ir, i_state_idx, {"New", "In Progress"}, i_link_idx, set(), excluded=ir_excluded)
-    ir_active   = apply_section_override(ir_active, ir, i_link_idx, overrides["inc-active"], excluded=ir_excluded)
+    # INCs Updated in the last 16 hours subsection
+    ir_active = filter_snow_by_recent(ir, i_updated_idx, 16, i_link_idx, excluded=ir_excluded)
+    ir_active = apply_section_override(ir_active, ir, i_link_idx, overrides["inc-active"], excluded=ir_excluded)
+
+    ir_tbc_excluded = get_excluded_ids(ho_status, "inc-tbc")
+    ir_tbc = apply_section_override([], ir, i_link_idx, overrides["inc-tbc"], excluded=ir_tbc_excluded)
 
     # SPC sub-sections
     lr_flagged   = get_flagged_ids(ho_status, "spc-tbc")
@@ -143,6 +145,7 @@ def index():
         ar_tbc=ar_tbc,
         ar_all=ar,
         ir_active=ir_active,
+        ir_tbc=ir_tbc,
         ir_all=ir,
         maxdb_headers=mh,
         maxdb_rows=mr,
