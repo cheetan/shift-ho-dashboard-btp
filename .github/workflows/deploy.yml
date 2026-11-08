@@ -14,13 +14,10 @@ jobs:
 
       - name: Install CF CLI
         run: |
-          for i in 1 2 3; do
-            curl -fsSL -o cf-cli.tgz \
-              "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" \
-              && tar -zxf cf-cli.tgz && break
-            echo "Attempt $i failed; waiting 30s before retry..."
-            sleep 30
-          done
+          CF_URL=$(curl -fsSL https://api.github.com/repos/cloudfoundry/cli/releases/latest \
+            | jq -r '[.assets[] | select(.name | test("cf8.*linux_x86-64\\.tgz$"))][0].browser_download_url')
+          curl -fsSL -o cf-cli.tgz "$CF_URL"
+          tar -zxf cf-cli.tgz
           sudo mv cf8 /usr/local/bin/cf
           cf version
 
