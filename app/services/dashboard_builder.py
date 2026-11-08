@@ -1169,14 +1169,20 @@ function _collectNotes() {{
     var key = el.dataset.key;
     if (el.checked) notes[key] = '1'; else delete notes[key];
   }});
+  var _moveSections = ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','cases-tbc','alerts-active','alerts-tbc','inc-active','inc-tbc','maxdb-prev','maxdb-current','maxdb-next','maxdb-tbc','maxdb-updated'];
+  var _moveByTicket = {{}};
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','cases-tbc','alerts-active','alerts-tbc','inc-active','inc-tbc','maxdb-prev','maxdb-current','maxdb-next','maxdb-tbc','maxdb-updated'].forEach(function(s) {{
-      delete notes['move:' + s + ':' + tid];
-    }});
-    if (el.value) notes['move:' + el.value + ':' + tid] = '1';
-    if (el.value) {{
-      delete notes['exclude:' + el.value + ':' + tid];
+    if (!_moveByTicket[tid]) _moveByTicket[tid] = [];
+    _moveByTicket[tid].push(el.value);
+  }});
+  Object.keys(_moveByTicket).forEach(function(tid) {{
+    _moveSections.forEach(function(s) {{ delete notes['move:' + s + ':' + tid]; }});
+    var nonEmpty = _moveByTicket[tid].filter(function(v) {{ return v; }});
+    if (nonEmpty.length > 0) {{
+      var dest = nonEmpty[nonEmpty.length - 1];
+      notes['move:' + dest + ':' + tid] = '1';
+      delete notes['exclude:' + dest + ':' + tid];
     }}
   }});
   Object.keys(notes).forEach(function(k) {{ if (k.startsWith('hide:')) delete notes[k]; }});
