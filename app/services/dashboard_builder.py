@@ -200,7 +200,7 @@ def source_card(source_key, label, pcounts, source_meta):
 def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_lr, sr_updated, sm,
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
                source_meta=None, current_user="", ho_updated_at="", sr_prev=None,
-               cr_active=None, cr_all=None, ar_active=None, ar_all=None, ir_active=None, ir_all=None,
+               cr_active=None, cr_all=None, ar_active=None, ar_all=None, ar_tbc=None, ir_active=None, ir_all=None,
                maxdb_headers=None, maxdb_rows=None, maxdb_rows_active=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
@@ -232,6 +232,9 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     for _r in ar_active or []:
         _tid = _r[alerts_link_idx] if alerts_link_idx < len(_r) else ""
         if _tid: alerts_coverage[_tid] = "Active Alerts"
+    for _r in ar_tbc or []:
+        _tid = _r[alerts_link_idx] if alerts_link_idx < len(_r) else ""
+        if _tid and _tid not in alerts_coverage: alerts_coverage[_tid] = "To be checked"
 
     _alert_cols = [c for c in ["Number","Priority","State","Assigned to","Subject","Install Base Item","Updated"] if c in ah]
     alert_active_t = render_table(
@@ -240,13 +243,19 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="alerts-active", hideable=True, remove_to_all=True)
 
+    ar_tbc_t = render_table(
+        ah, ar_tbc or [], _alert_cols,
+        pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
+        col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
+        editable_col="HO Status", section_id="alerts-tbc", hideable=True, remove_to_all=True)
+
     alert_all_t = render_table(
         ah, ar_all or ar, _alert_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="alerts-all", hideable=False,
         coverage_map=alerts_coverage,
-        move_sections=[("alerts-active", "Active Alerts")])
+        move_sections=[("alerts-active", "Active Alerts"), ("alerts-tbc", "To be checked")])
 
     cases_link_idx = safe_col(ch, "Number")
     cases_coverage = {}
@@ -675,6 +684,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   </div>
   <div class="section-body" id="alerts">
 {subsection("alerts-active", "&#x1F7E2;", "Active Alerts", len(ar_active or []), alert_active_t)}
+{subsection("alerts-tbc", "&#x1F534;", "To be checked", len(ar_tbc or []), ar_tbc_t)}
 <div class="section">
   <div class="section-header" onclick="toggle('alerts-all')">
     <span class="icon">&#x26A0;&#xFE0F;</span>
@@ -979,7 +989,7 @@ function removeFromActive(btn) {{
   var notes = _collectNotes();
   notes[excludeKey] = '1';
   delete notes[moveKey];
-  var _allSectionMap = {{'alerts-active':'alerts-all','cases-active':'cases-all','inc-active':'inc-all','spc-current':'spc-all','spc-next':'spc-all','spc-prev':'spc-all','spc-tbc':'spc-all','spc-updated':'spc-all','spc-maxdb':'spc-maxdb-all'}};
+  var _allSectionMap = {{'alerts-active':'alerts-all','alerts-tbc':'alerts-all','cases-active':'cases-all','inc-active':'inc-all','spc-current':'spc-all','spc-next':'spc-all','spc-prev':'spc-all','spc-tbc':'spc-all','spc-updated':'spc-all','spc-maxdb':'spc-maxdb-all'}};
   var _allSection = _allSectionMap[sectionId];
   if (_allSection) {{
     var _activeHOKey = 'ho:' + sectionId + ':' + ticketId;
@@ -1075,7 +1085,7 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','inc-active','spc-maxdb'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','alerts-tbc','inc-active','spc-maxdb'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
@@ -1199,7 +1209,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','inc-active','spc-maxdb'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','alerts-active','alerts-tbc','inc-active','spc-maxdb'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;
