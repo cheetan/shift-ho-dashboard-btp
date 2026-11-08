@@ -14,9 +14,14 @@ jobs:
 
       - name: Install CF CLI
         run: |
-          curl -fsSL https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo gpg --dearmor -o /usr/share/keyrings/cloudfoundry.gpg
-          echo "deb [signed-by=/usr/share/keyrings/cloudfoundry.gpg] https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
-          sudo apt-get update && sudo apt-get install -y cf8-cli
+          for i in 1 2 3; do
+            curl -fsSL -o cf-cli.tgz \
+              "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" \
+              && tar -zxf cf-cli.tgz && break
+            echo "Attempt $i failed; waiting 30s before retry..."
+            sleep 30
+          done
+          sudo mv cf8 /usr/local/bin/cf
           cf version
 
       - name: CF Login
