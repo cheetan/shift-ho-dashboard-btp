@@ -1034,6 +1034,10 @@ function removeFromActive(btn) {{
   }}).catch(function(e) {{ showSaveError(0); }});
 }}
 function moveTicket(sel) {{
+  var _moveTid = sel.dataset.ticket;
+  document.querySelectorAll('.move-select[data-ticket="' + _moveTid + '"]').forEach(function(other) {{
+    other.value = sel.value;
+  }});
   if (sel.value) {{
     if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
     var notes = _collectNotes();
