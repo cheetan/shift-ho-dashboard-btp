@@ -143,7 +143,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
                 _cov_cls = {"Current Shift": "cov-current", "Next Shift": "cov-next",
                             "To be checked": "cov-tbc", "Updated": "cov-updated",
                             "Previous Shift": "cov-prev", "Active Cases": "cov-active",
-                            "Active Alerts": "cov-alerts-active", "Active INCs": "cov-inc-active"}.get(cov_label, "")
+                            "Alerts Updated in the past 16 hrs": "cov-alerts-active", "Active INCs": "cov-inc-active"}.get(cov_label, "")
                 cov_cell = f'<span class="cov-badge {_cov_cls}">{cov_label}</span>'
             else:
                 cov_cell = '<span class="cov-none">—</span>'
@@ -232,7 +232,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
     alerts_coverage = {}
     for _r in ar_active or []:
         _tid = _r[alerts_link_idx] if alerts_link_idx < len(_r) else ""
-        if _tid: alerts_coverage[_tid] = "Active Alerts"
+        if _tid: alerts_coverage[_tid] = "Alerts Updated in the past 16 hrs"
     for _r in ar_tbc or []:
         _tid = _r[alerts_link_idx] if alerts_link_idx < len(_r) else ""
         if _tid and _tid not in alerts_coverage: alerts_coverage[_tid] = "To be checked"
@@ -686,7 +686,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
   </div>
   <div class="section-body" id="alerts">
 {subsection("alerts-tbc", "&#x1F534;", "To be checked", len(ar_tbc or []), ar_tbc_t)}
-{subsection("alerts-active", "&#x1F7E2;", "Active Alerts", len(ar_active or []), alert_active_t)}
+{subsection("alerts-active", "&#x1F7E2;", "Alerts Updated in the past 16 hrs", len(ar_active or []), alert_active_t)}
 <div class="section">
   <div class="section-header" onclick="toggle('alerts-all')">
     <span class="icon">&#x26A0;&#xFE0F;</span>
