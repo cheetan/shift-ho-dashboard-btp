@@ -1089,8 +1089,11 @@ function moveTicket(sel) {{
   if (sel.value) {{
     var _srcRow = sel.closest('tr');
     var _srcHoEdit = _srcRow ? _srcRow.querySelector('.ho-edit') : null;
-    if (_srcHoEdit && _srcHoEdit.innerText.trim()) {{
-      sharedNotes['ho:' + sel.value + ':' + _moveTid] = _srcHoEdit.innerText.trim();
+    var _srcHoVal = _srcHoEdit ? _srcHoEdit.innerText.trim() : '';
+    if (_srcHoVal) {{
+      sharedNotes['ho:' + sel.value + ':' + _moveTid] = _srcHoVal;
+    }} else {{
+      delete sharedNotes['ho:' + sel.value + ':' + _moveTid];
     }}
     if (_autoSaveTimer) {{ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }}
     var notes = _collectNotes();
