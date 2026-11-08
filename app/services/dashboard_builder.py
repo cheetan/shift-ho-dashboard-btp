@@ -77,7 +77,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
     lr_th   = '<th class="lr-th">To be checked</th>'  if longrunner        else ""
     extra_th = f'<th>{editable_col}</th>'           if editable_col      else ""
     cov_th  = '<th class="cov-th">Section</th>'     if coverage_map is not None else ""
-    move_th = '<th class="move-th">Move to</th>'   if coverage_map is not None else ""
+    move_th = '<th class="move-th">Move to</th>'   if (coverage_map is not None or move_sections is not None) else ""
     th = hide_th + "".join(f"<th>{h}</th>" for h in actual) + lr_th + extra_th + cov_th + move_th
 
     tbody = []
@@ -148,6 +148,7 @@ def render_table(headers, rows, show_cols, pri_col=None, link_col=None, rename=N
             else:
                 cov_cell = '<span class="cov-none">—</span>'
             tds.append(f"<td>{cov_cell}</td>")
+        if coverage_map is not None or move_sections is not None:
             tds.append(
                 f'<td><select class="move-select" data-ticket="{ticket_key}" onchange="moveTicket(this)">'
                 f'<option value="">— auto —</option>'
@@ -241,7 +242,8 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         ah, ar_active or [], _alert_cols,
         pri_col="Priority", link_col="Number", rename=snow_rename, link_url=snow_url,
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
-        editable_col="HO Status", section_id="alerts-active", hideable=True, remove_to_all=True)
+        editable_col="HO Status", section_id="alerts-active", hideable=True, remove_to_all=True,
+        move_sections=[("alerts-tbc", "To be checked")])
 
     ar_tbc_t = render_table(
         ah, ar_tbc or [], _alert_cols,
@@ -255,7 +257,7 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         col_format={"Updated": reformat_date_dmy}, sort_col="Updated", sort_desc=True,
         editable_col="HO Status", section_id="alerts-all", hideable=False,
         coverage_map=alerts_coverage,
-        move_sections=[("alerts-active", "Active Alerts"), ("alerts-tbc", "To be checked")])
+        move_sections=[("alerts-tbc", "To be checked")])
 
     cases_link_idx = safe_col(ch, "Number")
     cases_coverage = {}
