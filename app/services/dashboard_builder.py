@@ -202,7 +202,8 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
                ho_status=None, shift_label="", next_shift_label="", prev_shift_label="",
                source_meta=None, current_user="", ho_updated_at="", sr_prev=None,
                cr_active=None, cr_tbc=None, cr_all=None, ar_active=None, ar_all=None, ar_tbc=None, ir_active=None, ir_tbc=None, ir_all=None,
-               maxdb_headers=None, maxdb_rows=None, maxdb_rows_active=None):
+               maxdb_headers=None, maxdb_rows=None, maxdb_rows_current=None,
+               maxdb_rows_prev=None, maxdb_rows_next=None, maxdb_rows_tbc=None, maxdb_rows_updated=None):
     now       = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     spc_updated_str = sm.get("last_updated", "—") + " " + sm.get("timezone", "")
     ho_json   = json.dumps(ho_status or {}, ensure_ascii=False)
@@ -390,34 +391,74 @@ def build_html(ah, ar, ch, cr, ih, ir, sh, sr_all_raw, sr_current, sr_next, sr_l
         editable_col="HO Status", section_id="spc-all", hideable=False,
         coverage_map=coverage)
 
-    # MaxDB Activities tables
+    # Non-Core DB SPC tables — mirrors SPC Tickets structure (prev/current/next/tbc/updated)
     m_link_idx  = safe_col(maxdb_headers or [], "Ticket ID")
+    m_subj_idx  = safe_col(maxdb_headers or [], "Subject")
     maxdb_cols  = [c for c in [
         "Ticket ID", "Ticket Type", "Priority", "Status", "Processor", "Subject",
         "Last Changed At", "Service Execution ID", "Process Execution ID", "Process Execution Status",
     ] if c in (maxdb_headers or [])]
-    maxdb_coverage = {}
-    for _r in (maxdb_rows_active or []):
-        _tid = _r[m_link_idx] if m_link_idx < len(_r) else ""
-        if _tid: maxdb_coverage[_tid] = "MaxDB Activities"
-    maxdb_t = render_table(
-        maxdb_headers or [], maxdb_rows_active or [], maxdb_cols,
-        pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
+    def maxdb_subj_sort(r):
+        return parse_spc_subject_dt(r[m_subj_idx] if m_subj_idx < len(r) else "") or _dt_min
+    _maxdb_url = "https://spc.ondemand.com/open?ticket={}"
+    maxdb_current_t = render_table(
+        maxdb_headers or [], maxdb_rows_current or [], maxdb_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url=_maxdb_url,
+        rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
+        sort_key_fn=maxdb_subj_sort,
+        editable_col="HO Status", section_id="maxdb-current", hideable=True, remove_to_all=True)
+    maxdb_prev_t = render_table(
+        maxdb_headers or [], maxdb_rows_prev or [], maxdb_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url=_maxdb_url,
+        rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
+        sort_key_fn=maxdb_subj_sort,
+        editable_col="HO Status", section_id="maxdb-prev", hideable=True, remove_to_all=True)
+    maxdb_next_t = render_table(
+        maxdb_headers or [], maxdb_rows_next or [], maxdb_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url=_maxdb_url,
+        rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
+        sort_key_fn=maxdb_subj_sort,
+        editable_col="HO Status", section_id="maxdb-next", hideable=True, remove_to_all=True)
+    maxdb_tbc_t = render_table(
+        maxdb_headers or [], maxdb_rows_tbc or [], maxdb_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url=_maxdb_url,
+        rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
+        editable_col="HO Status", section_id="maxdb-tbc", hideable=True, remove_to_all=True)
+    maxdb_updated_t = render_table(
+        maxdb_headers or [], maxdb_rows_updated or [], maxdb_cols,
+        pri_col="Priority", link_col="Ticket ID", link_url=_maxdb_url,
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         sort_col="Last Changed At", sort_desc=True,
-        editable_col="HO Status", section_id="spc-maxdb", hideable=True, remove_to_all=True)
+        editable_col="HO Status", section_id="maxdb-updated", hideable=True, remove_to_all=True)
+    maxdb_coverage = {}
+    for _r in (maxdb_rows_current or []):
+        _tid = _r[m_link_idx] if m_link_idx < len(_r) else ""
+        if _tid and _tid not in maxdb_coverage: maxdb_coverage[_tid] = "Current Shift"
+    for _r in (maxdb_rows_next or []):
+        _tid = _r[m_link_idx] if m_link_idx < len(_r) else ""
+        if _tid and _tid not in maxdb_coverage: maxdb_coverage[_tid] = "Next Shift"
+    for _r in (maxdb_rows_tbc or []):
+        _tid = _r[m_link_idx] if m_link_idx < len(_r) else ""
+        if _tid and _tid not in maxdb_coverage: maxdb_coverage[_tid] = "To be checked"
+    for _r in (maxdb_rows_updated or []):
+        _tid = _r[m_link_idx] if m_link_idx < len(_r) else ""
+        if _tid and _tid not in maxdb_coverage: maxdb_coverage[_tid] = "Updated"
+    for _r in (maxdb_rows_prev or []):
+        _tid = _r[m_link_idx] if m_link_idx < len(_r) else ""
+        if _tid and _tid not in maxdb_coverage: maxdb_coverage[_tid] = "Previous Shift"
     maxdb_all_t = render_table(
         maxdb_headers or [], maxdb_rows or [], maxdb_cols,
-        pri_col="Priority", link_col="Ticket ID", link_url="https://spc.ondemand.com/open?ticket={}",
+        pri_col="Priority", link_col="Ticket ID", link_url=_maxdb_url,
         rename=spc_rename, link_cols=spc_multi_links, col_format=spc_col_fmt,
         sort_col="Last Changed At", sort_desc=True,
-        editable_col="HO Status", section_id="spc-maxdb-all", hideable=False,
+        editable_col="HO Status", section_id="maxdb-all", hideable=False,
         coverage_map=maxdb_coverage,
-        move_sections=[("spc-maxdb", "MaxDB Activities")])
+        move_sections=[("maxdb-prev","Previous Shift"),("maxdb-current","Current Shift"),
+                       ("maxdb-next","Next Shift"),("maxdb-tbc","To be checked"),("maxdb-updated","Updated")])
 
     cards = (
         source_card("spc",        "SPC XLSX",                  spc_c, source_meta) +
-        source_card("spc_maxdb",  "MaxDB Activities XLSX",     mpc,   source_meta) +
+        source_card("spc_maxdb",  "Non-Core DB Activities XLSX", mpc,   source_meta) +
         source_card("snow_case",  "Snow Cases XLSX",           cpc,   source_meta) +
         source_card("snow_alert", "Snow Alerts XLSX",          apc,   source_meta) +
         source_card("snow_inc",   "Snow Internal INCs XLSX",   ipc,   source_meta)
@@ -658,7 +699,7 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 
 <div class="tab-bar">
   <button class="tab-btn" data-tab="spc" onclick="switchTab('spc')">&#x1F5A5;&#xFE0F; SPC <span class="tab-count">{len(sr_prev or []) + len(sr_current) + len(sr_lr)}</span></button>
-  <button class="tab-btn" data-tab="maxdb" onclick="switchTab('maxdb')">&#x1F5C4;&#xFE0F; MaxDB <span class="tab-count">{len(maxdb_rows_active or [])}</span></button>
+  <button class="tab-btn" data-tab="maxdb" onclick="switchTab('maxdb')">&#x1F5C4;&#xFE0F; Non-Core DB SPC <span class="tab-count">{len(maxdb_rows_prev or [])+len(maxdb_rows_current or [])+len(maxdb_rows_tbc or [])}</span></button>
   <button class="tab-btn" data-tab="info" onclick="switchTab('info')">&#x2139;&#xFE0F; Information</button>
   <button class="tab-btn" data-tab="cases" onclick="switchTab('cases')">&#x1F4CB; Snow Cases <span class="tab-count">{len(cr_active or [])}</span></button>
   <button class="tab-btn" data-tab="alerts" onclick="switchTab('alerts')">&#x26A0;&#xFE0F; Snow Alerts <span class="tab-count">{len(ar_active or [])}</span></button>
@@ -816,36 +857,40 @@ tr.row-covered:hover{{opacity:1;transition:opacity .15s}}
 <div id="tab-maxdb" class="tab-panel">
 
 <div class="section">
-  <div class="section-header" onclick="toggle('spc-maxdb-section')">
+  <div class="section-header" onclick="toggle('maxdb-section')">
     <span class="icon">&#x1F5C4;&#xFE0F;</span>
-    <h2>MaxDB Activities</h2>
+    <h2>Non-Core DB Scheduled / TBC Tickets</h2>
     <span class="section-sub">{shift_label}</span>
-    <span class="count">{len(maxdb_rows_active or [])}</span>
-    <span class="toggle" id="spc-maxdb-section-tog">&#9660;</span>
+    <span class="count">{len(maxdb_rows_prev or [])+len(maxdb_rows_current or [])+len(maxdb_rows_tbc or [])}</span>
+    <span class="toggle" id="maxdb-section-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="spc-maxdb-section">
-{subsection("spc-maxdb", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(maxdb_rows_active or []), maxdb_t)}
+  <div class="section-body" id="maxdb-section">
+{subsection("maxdb-prev",    "&#x23EA;",    f"Previous Shift &mdash; {prev_shift_label}", len(maxdb_rows_prev or []), maxdb_prev_t)}
+{subsection("maxdb-current", "&#x1F7E2;", f"Current Shift &mdash; {shift_label}", len(maxdb_rows_current or []), maxdb_current_t)}
+{subsection("maxdb-next",    "&#x1F7E1;", f"Next Shift &mdash; {next_shift_label}", len(maxdb_rows_next or []), maxdb_next_t)}
+{subsection("maxdb-tbc",     "&#x1F534;", "To be checked", len(maxdb_rows_tbc or []), maxdb_tbc_t)}
+{subsection("maxdb-updated", "&#x1F504;", f"Tickets Updated on Former Shift &mdash; {shift_label}", len(maxdb_rows_updated or []), maxdb_updated_t)}
   </div>
 </div>
 
 <div class="section">
-  <div class="section-header" onclick="toggle('spc-maxdb-all')">
+  <div class="section-header" onclick="toggle('maxdb-all')">
     <span class="icon">&#x1F5C4;&#xFE0F;</span>
-    <h2>All MaxDB Tickets</h2>
+    <h2>All Non-Core DB Tickets</h2>
     <span class="section-sub">Complete XLSX &mdash; {len(maxdb_rows or [])} tickets</span>
     <span class="count">{len(maxdb_rows or [])}</span>
-    <span class="toggle" id="spc-maxdb-all-tog">&#9660;</span>
+    <span class="toggle" id="maxdb-all-tog">&#9660;</span>
   </div>
-  <div class="section-body" id="spc-maxdb-all">
+  <div class="section-body" id="maxdb-all">
     <div class="filter-bar">
-      <input type="text" placeholder="Filter&hellip;" oninput="filterText('spc-maxdb-all-tbl', this.value)">
-      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p1',this)">P1</button>
-      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p2',this)">P2</button>
-      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p3',this)">P3</button>
-      <button class="filter-btn" onclick="filterPri('spc-maxdb-all-tbl','p4',this)">P4</button>
-      <button class="filter-btn toggle-covered-btn active" data-tbl="spc-maxdb-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
+      <input type="text" placeholder="Filter&hellip;" oninput="filterText('maxdb-all-tbl', this.value)">
+      <button class="filter-btn" onclick="filterPri('maxdb-all-tbl','p1',this)">P1</button>
+      <button class="filter-btn" onclick="filterPri('maxdb-all-tbl','p2',this)">P2</button>
+      <button class="filter-btn" onclick="filterPri('maxdb-all-tbl','p3',this)">P3</button>
+      <button class="filter-btn" onclick="filterPri('maxdb-all-tbl','p4',this)">P4</button>
+      <button class="filter-btn toggle-covered-btn active" data-tbl="maxdb-all-tbl" data-hiding="1" onclick="toggleCovered(this)">Show only unassigned (0)</button>
     </div>
-    <div id="spc-maxdb-all-tbl" class="hide-covered">{maxdb_all_t}</div>
+    <div id="maxdb-all-tbl" class="hide-covered">{maxdb_all_t}</div>
   </div>
 </div>
 
@@ -1015,7 +1060,7 @@ function removeFromActive(btn) {{
   var notes = _collectNotes();
   notes[excludeKey] = '1';
   delete notes[moveKey];
-  var _allSectionMap = {{'alerts-active':'alerts-all','alerts-tbc':'alerts-all','cases-active':'cases-all','cases-tbc':'cases-all','inc-active':'inc-all','inc-tbc':'inc-all','spc-current':'spc-all','spc-next':'spc-all','spc-prev':'spc-all','spc-tbc':'spc-all','spc-updated':'spc-all','spc-maxdb':'spc-maxdb-all'}};
+  var _allSectionMap = {{'alerts-active':'alerts-all','alerts-tbc':'alerts-all','cases-active':'cases-all','cases-tbc':'cases-all','inc-active':'inc-all','inc-tbc':'inc-all','spc-current':'spc-all','spc-next':'spc-all','spc-prev':'spc-all','spc-tbc':'spc-all','spc-updated':'spc-all','maxdb-prev':'maxdb-all','maxdb-current':'maxdb-all','maxdb-next':'maxdb-all','maxdb-tbc':'maxdb-all','maxdb-updated':'maxdb-all'}};
   var _allSection = _allSectionMap[sectionId];
   if (_allSection) {{
     var _activeHOKey = 'ho:' + sectionId + ':' + ticketId;
@@ -1120,7 +1165,7 @@ function _collectNotes() {{
   }});
   document.querySelectorAll('.move-select').forEach(function(el) {{
     var tid = el.dataset.ticket;
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','cases-tbc','alerts-active','alerts-tbc','inc-active','inc-tbc','spc-maxdb'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','cases-tbc','alerts-active','alerts-tbc','inc-active','inc-tbc','maxdb-prev','maxdb-current','maxdb-next','maxdb-tbc','maxdb-updated'].forEach(function(s) {{
       delete notes['move:' + s + ':' + tid];
     }});
     if (el.value) notes['move:' + el.value + ':' + tid] = '1';
@@ -1244,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   document.querySelectorAll('.move-select').forEach(function(sel) {{
     var tid = sel.dataset.ticket;
     var found = '';
-    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','cases-tbc','alerts-active','alerts-tbc','inc-active','inc-tbc','spc-maxdb'].forEach(function(s) {{
+    ['spc-current','spc-next','spc-tbc','spc-updated','spc-prev','cases-active','cases-tbc','alerts-active','alerts-tbc','inc-active','inc-tbc','maxdb-prev','maxdb-current','maxdb-next','maxdb-tbc','maxdb-updated'].forEach(function(s) {{
       if ((sharedNotes['move:' + s + ':' + tid] || '') === '1') found = s;
     }});
     sel.value = found;

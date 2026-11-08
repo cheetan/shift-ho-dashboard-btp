@@ -68,7 +68,6 @@ def index():
     sr_prev_excluded    = get_excluded_ids(ho_status, "spc-prev")
     sr_tbc_excluded     = get_excluded_ids(ho_status, "spc-tbc")
     sr_updated_excluded = get_excluded_ids(ho_status, "spc-updated")
-    mr_excluded         = get_excluded_ids(ho_status, "spc-maxdb")
 
     # Active Alerts subsection — last 24h updated, or manually pinned
     ar_active   = filter_snow_by_recent(ar, a_updated_idx, 16, a_link_idx, excluded=ar_excluded)
@@ -117,12 +116,41 @@ def index():
     sr_updated = apply_section_override(sr_updated, sr_all_raw, s_link_idx, overrides["spc-updated"], excluded=sr_updated_excluded)
     sr_prev    = apply_section_override(sr_prev,    sr_all_raw, s_link_idx, overrides["spc-prev"],    excluded=sr_prev_excluded)
 
-    # MaxDB Activities subsection — current-shift filter (same logic as SPC Current Shift)
+    # Non-Core DB SPC subsections — mirrors SPC Tickets structure (prev/current/next/tbc/updated)
     m_link_idx = safe_col(mh, "Ticket ID")
     m_subj_idx = safe_col(mh, "Subject")
-    mr_active  = filter_spc_by_shift(mr, m_subj_idx, shift_start, shift_end,
-                                      m_link_idx, set(), excluded=mr_excluded)
-    mr_active  = apply_section_override(mr_active, mr, m_link_idx, overrides["spc-maxdb"], excluded=mr_excluded)
+    m_lc_idx   = safe_col(mh, "Last Changed At")
+
+    lr_flagged_maxdb    = get_flagged_ids(ho_status, "maxdb-tbc")
+    hide_maxdb_current  = get_flagged_ids(ho_status, "maxdb-current")
+    hide_maxdb_prev     = get_flagged_ids(ho_status, "maxdb-prev")
+    hide_maxdb_next     = get_flagged_ids(ho_status, "maxdb-next")
+
+    mr_current_excluded = get_excluded_ids(ho_status, "maxdb-current")
+    mr_prev_excluded    = get_excluded_ids(ho_status, "maxdb-prev")
+    mr_next_excluded    = get_excluded_ids(ho_status, "maxdb-next")
+    mr_tbc_excluded     = get_excluded_ids(ho_status, "maxdb-tbc")
+    mr_updated_excluded = get_excluded_ids(ho_status, "maxdb-updated")
+
+    mr_current = filter_spc_by_shift(mr, m_subj_idx, shift_start, shift_end,
+                                      m_link_idx, hide_maxdb_current, excluded=mr_current_excluded)
+    mr_prev    = filter_spc_by_shift(mr, m_subj_idx, prev_start,  prev_end,
+                                      m_link_idx, hide_maxdb_prev,    excluded=mr_prev_excluded)
+    mr_next    = filter_spc_by_shift(mr, m_subj_idx, next_start,  next_end,
+                                      m_link_idx, hide_maxdb_next,    excluded=mr_next_excluded)
+    mr_tbc     = filter_spc_longrunners(mr, m_link_idx, lr_flagged_maxdb, excluded=mr_tbc_excluded)
+
+    maxdb_scheduled_ids = {r[m_link_idx] for r in mr_current + mr_next
+                           if m_link_idx < len(r) and r[m_link_idx]} | lr_flagged_maxdb
+    mr_updated = filter_spc_by_last_changed(mr, m_lc_idx, prev_start, prev_end,
+                                             m_link_idx, set(),
+                                             exclude_ids=maxdb_scheduled_ids | mr_updated_excluded)
+
+    mr_current = apply_section_override(mr_current, mr, m_link_idx, overrides["maxdb-current"], excluded=mr_current_excluded)
+    mr_prev    = apply_section_override(mr_prev,    mr, m_link_idx, overrides["maxdb-prev"],    excluded=mr_prev_excluded)
+    mr_next    = apply_section_override(mr_next,    mr, m_link_idx, overrides["maxdb-next"],    excluded=mr_next_excluded)
+    mr_tbc     = apply_section_override(mr_tbc,     mr, m_link_idx, overrides["maxdb-tbc"],     excluded=mr_tbc_excluded)
+    mr_updated = apply_section_override(mr_updated, mr, m_link_idx, overrides["maxdb-updated"], excluded=mr_updated_excluded)
 
     current_user = get_user_from_request(request)
     ho_updated_at = get_store().get_ho_updated_at()
@@ -149,6 +177,10 @@ def index():
         ir_all=ir,
         maxdb_headers=mh,
         maxdb_rows=mr,
-        maxdb_rows_active=mr_active,
+        maxdb_rows_current=mr_current,
+        maxdb_rows_prev=mr_prev,
+        maxdb_rows_next=mr_next,
+        maxdb_rows_tbc=mr_tbc,
+        maxdb_rows_updated=mr_updated,
     )
     return Response(html, mimetype="text/html")
